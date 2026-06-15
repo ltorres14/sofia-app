@@ -1,0 +1,30 @@
+diff --git a/lib/core/config/app_environment.dart b/lib/core/config/app_environment.dart
+index b0bb2f2..e62eeab 100644
+--- a/lib/core/config/app_environment.dart
++++ b/lib/core/config/app_environment.dart
+@@ -1,6 +1,6 @@
+-class AppEnvironment {
+-  static const String baseUrl = String.fromEnvironment(
+-    'BASE_URL',
+-    defaultValue: 'http://192.168.1.17:5247',
+-  );
++import 'api_config.dart';
++
++class AppEnvironmentConfig {
++  static AppEnvironment get current => ApiConfig.environment;
++  static String get baseUrl => ApiConfig.baseUrl;
+ }
+diff --git a/lib/core/constants/api_constants.dart b/lib/core/constants/api_constants.dart
+index 1fd771c..da4d566 100644
+--- a/lib/core/constants/api_constants.dart
++++ b/lib/core/constants/api_constants.dart
+@@ -1,7 +1,7 @@
+-import '../config/app_environment.dart';
++import '../config/api_config.dart';
+ 
+ class ApiConstants {
+-  static String get baseUrl => AppEnvironment.baseUrl;
++  static String get baseUrl => ApiConfig.baseUrl;
+ 
+   static const String authPin = '/api/auth/pin';
+   static const String authMe = '/api/auth/me';

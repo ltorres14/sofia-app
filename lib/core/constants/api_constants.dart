@@ -1,7 +1,7 @@
-import '../config/app_environment.dart';
+import '../config/api_config.dart';
 
 class ApiConstants {
-  static String get baseUrl => AppEnvironment.baseUrl;
+  static String get baseUrl => ApiConfig.baseUrl;
 
   static const String authPin = '/api/auth/pin';
   static const String authMe = '/api/auth/me';
