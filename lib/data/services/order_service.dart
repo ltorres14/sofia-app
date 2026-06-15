@@ -1,0 +1,51 @@
+import '../../core/constants/api_constants.dart';
+import '../../core/network/api_client.dart';
+import '../models/orders/order.dart';
+
+class OrderService {
+  final _client = ApiClient.instance.dio;
+
+  Future<Order?> getOpenOrderByTable(int tableId) async {
+    try {
+      final response = await _client.get('${ApiConstants.orders}/table/$tableId');
+      return Order.fromJson(response.data as Map<String, dynamic>);
+    } catch (error) {
+      if (error is Exception) {
+        try {
+          ApiClient.instance.parseError(error);
+        } catch (_) {
+          return null;
+        }
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> addItem({
+    required int orderId,
+    required int productId,
+    int quantity = 1,
+    String? notes,
+  }) async {
+    try {
+      await _client.post(
+        '${ApiConstants.orders}/$orderId/items',
+        data: {
+          'productId': productId,
+          'quantity': quantity,
+          'notes': notes,
+        },
+      );
+    } catch (error) {
+      ApiClient.instance.parseError(error);
+    }
+  }
+
+  Future<void> sendToKitchen(int orderId) async {
+    try {
+      await _client.post('${ApiConstants.orders}/$orderId/send-to-kitchen');
+    } catch (error) {
+      ApiClient.instance.parseError(error);
+    }
+  }
+}
