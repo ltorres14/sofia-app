@@ -8,6 +8,21 @@ class AppResponsive {
   factory AppResponsive.of(BuildContext context, {Size? layoutSize}) =>
       AppResponsive._(context, layoutSize: layoutSize);
 
+  static double width(BuildContext context) => MediaQuery.sizeOf(context).width;
+
+  static double height(BuildContext context) =>
+      MediaQuery.sizeOf(context).height;
+
+  static double percentWidth(
+    BuildContext context,
+    double percent,
+  ) => width(context) * (percent / 100);
+
+  static double percentHeight(
+    BuildContext context,
+    double percent,
+  ) => height(context) * (percent / 100);
+
   final BuildContext context;
   final Size? _layoutSize;
 
@@ -17,6 +32,10 @@ class AppResponsive {
 
   double get screenWidth => _size.width;
   double get screenHeight => _size.height;
+  double get availableWidth =>
+      math.max(0, screenWidth - (horizontalPadding * 2));
+  double get availableHeight =>
+      math.max(0, screenHeight - (verticalPadding * 2));
   Orientation get orientation => _mediaQuery.orientation;
   bool get isPortrait => orientation == Orientation.portrait;
   bool get isLandscape => orientation == Orientation.landscape;
@@ -63,6 +82,74 @@ class AppResponsive {
   double get titleFontSize => (screenWidth * 0.05).clamp(24, 34);
   double get bodyFontSize => (screenWidth * 0.024).clamp(14, 18);
   double get captionFontSize => (screenWidth * 0.02).clamp(11, 14);
+  double get panelGap => spacingMd;
+  Axis get orderLayoutDirection => isPortrait ? Axis.vertical : Axis.horizontal;
+  double get categoryPanelWidthPercent => isPortrait ? 1 : 0.24;
+  double get productsPanelWidthPercent => isPortrait ? 1 : 0.46;
+  double get currentOrderPanelWidthPercent => isPortrait ? 1 : 0.30;
+  double get categoryButtonHeight => isPortrait
+      ? (screenHeight * 0.055).clamp(38, 46)
+      : (screenHeight * 0.07).clamp(48, 60);
+  double get categoryButtonFontSize => isPortrait
+      ? (screenWidth * 0.021).clamp(12, 14)
+      : (screenWidth * 0.024).clamp(13, 17);
+  double get orderPanelWidth =>
+      (availableWidth * currentOrderPanelWidthPercent).clamp(280, 360);
+  double get orderPanelMinHeight =>
+      isPortrait ? (availableHeight * 0.30).clamp(210, 280) : availableHeight;
+  double get orderPanelCompactHeight =>
+      isPortrait ? (availableHeight * 0.24).clamp(176, 220) : availableHeight;
+  double get orderPanelExpandedHeight => isPortrait
+      ? (availableHeight * 0.42).clamp(280, 380)
+      : availableHeight;
+  double get orderActionButtonHeight => isPortrait
+      ? (screenHeight * 0.056).clamp(40, 48)
+      : buttonHeight;
+  double get orderTitleFontSize => isPortrait
+      ? (screenWidth * 0.03).clamp(17, 22)
+      : (screenWidth * 0.034).clamp(20, 28);
+  double get orderBodyFontSize => isPortrait
+      ? (screenWidth * 0.021).clamp(12, 15)
+      : (screenWidth * 0.023).clamp(13, 17);
+  double get orderTotalFontSize => isPortrait
+      ? (screenWidth * 0.034).clamp(20, 26)
+      : (screenWidth * 0.03).clamp(18, 24);
+
+  int get productGridColumns {
+    if (isPortrait) {
+      if (screenWidth < 700) {
+        return 2;
+      }
+      return 2;
+    }
+    if (screenWidth >= 1300) {
+      return 3;
+    }
+    return 2;
+  }
+
+  double get productCardHeight {
+    final columns = productGridColumns;
+    final availableGridWidth = math.max(
+      0,
+      availableWidth - ((columns - 1) * spacingMd),
+    );
+    final cardWidth = availableGridWidth / columns;
+    if (isPortrait) {
+      return (cardWidth * 1.02).clamp(150, 190);
+    }
+    return cardWidth.clamp(220, 300);
+  }
+
+  double get productCardAspectRatio {
+    final columns = productGridColumns;
+    final availableGridWidth = math.max(
+      0,
+      availableWidth - ((columns - 1) * spacingMd),
+    );
+    final cardWidth = availableGridWidth / columns;
+    return cardWidth / productCardHeight;
+  }
 
   int get tableGridColumns {
     if (isPortrait) {
@@ -114,9 +201,15 @@ class AppResponsive {
     return cardWidth / tableCardHeight;
   }
 
-  double get spacingXs => (screenWidth * 0.012).clamp(6, 10);
-  double get spacingSm => (screenWidth * 0.02).clamp(10, 14);
-  double get spacingMd => (screenWidth * 0.03).clamp(14, 20);
+  double get spacingXs => isPortrait
+      ? (screenWidth * 0.01).clamp(4, 8)
+      : (screenWidth * 0.012).clamp(6, 10);
+  double get spacingSm => isPortrait
+      ? (screenWidth * 0.016).clamp(8, 12)
+      : (screenWidth * 0.02).clamp(10, 14);
+  double get spacingMd => isPortrait
+      ? (screenWidth * 0.022).clamp(10, 16)
+      : (screenWidth * 0.03).clamp(14, 20);
   double get spacingLg => (screenWidth * 0.045).clamp(20, 28);
   double get spacingXl => (screenWidth * 0.06).clamp(24, 36);
 }

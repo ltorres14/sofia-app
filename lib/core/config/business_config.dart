@@ -41,7 +41,7 @@ class BusinessConfig {
 
   static const BusinessConfig current = BusinessConfig(
     businessName: 'La Casita del Marisco',
-    businessSubtitle: 'Mariscos · Restaurante',
+    businessSubtitle: 'Mariscos | Restaurante',
     businessType: 'seafood',
     logoAssetPath: 'assets/images/businesses/seafood/logo.png',
     loginBackgroundAssetPath:
@@ -55,7 +55,7 @@ class BusinessConfig {
     warningColor: Color(0xFFF4A261),
     dangerColor: Color(0xFFD1495B),
     surfaceColor: Color(0xFFF8FAFC),
-    footerText: 'SOFIA Check · Sistema de punto de venta',
+    footerText: 'SOFÍA Check | Sistema de punto de venta',
     currencySymbol: '\$',
     defaultTaxPercent: 0,
     showSofiaBranding: true,

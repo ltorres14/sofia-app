@@ -8,7 +8,7 @@ class OrderRepository {
 
   Future<Order?> getOpenOrderByTable(int tableId) => _service.getOpenOrderByTable(tableId);
 
-  Future<void> addItem({
+  Future<Order> addItem({
     required int orderId,
     required int productId,
     int quantity = 1,

@@ -29,6 +29,7 @@ class OrderViewModel extends ChangeNotifier {
   String selectedCategory = 'Todos';
   bool isLoading = false;
   bool isSending = false;
+  bool isOrderExpanded = false;
   String? errorMessage;
 
   List<String> get categories {
@@ -67,13 +68,21 @@ class OrderViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void toggleOrderExpanded() {
+    isOrderExpanded = !isOrderExpanded;
+    notifyListeners();
+  }
+
   Future<void> addProduct(Product product, RestaurantTable table) async {
     if (order == null) return;
     isLoading = true;
+    errorMessage = null;
     notifyListeners();
     try {
-      await _orderRepository.addItem(orderId: order!.id, productId: product.id);
-      order = await _orderRepository.getOpenOrderByTable(table.id);
+      order = await _orderRepository.addItem(
+        orderId: order!.id,
+        productId: product.id,
+      );
     } catch (error) {
       errorMessage = error.toString().replaceFirst('Exception: ', '');
     } finally {
@@ -85,6 +94,7 @@ class OrderViewModel extends ChangeNotifier {
   Future<void> sendToKitchen(RestaurantTable table) async {
     if (order == null) return;
     isSending = true;
+    errorMessage = null;
     notifyListeners();
     try {
       await _orderRepository.sendToKitchen(order!.id);

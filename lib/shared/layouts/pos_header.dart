@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/config/business_config.dart';
 import '../../core/responsive/app_responsive.dart';
+import '../widgets/safe_app_image.dart';
 
 class PosHeader extends StatelessWidget {
   const PosHeader({
@@ -21,9 +22,16 @@ class PosHeader extends StatelessWidget {
 
     return Row(
       children: [
-        CircleAvatar(
-          radius: responsive.isPortrait ? 24 : 28,
-          backgroundImage: AssetImage(BusinessConfig.current.logoAssetPath),
+        SizedBox(
+          width: responsive.isPortrait ? 48 : 56,
+          height: responsive.isPortrait ? 48 : 56,
+          child: ClipOval(
+            child: SafeAppImage.asset(
+              assetPath: BusinessConfig.current.logoAssetPath,
+              fallbackIcon: Icons.storefront_rounded,
+              iconSize: responsive.iconSize + 4,
+            ),
+          ),
         ),
         SizedBox(width: responsive.spacingMd),
         Expanded(

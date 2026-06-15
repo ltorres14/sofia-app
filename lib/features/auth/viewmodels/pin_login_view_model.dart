@@ -27,6 +27,16 @@ class PinLoginViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updatePin(String value) {
+    if (isLoading) return;
+    pin = value.length > AppConstants.pinLength
+        ? value.substring(0, AppConstants.pinLength)
+        : value;
+    errorMessage = null;
+    _shouldAutoSubmit = pin.length == AppConstants.pinLength;
+    notifyListeners();
+  }
+
   void backspace() {
     if (pin.isEmpty || isLoading) return;
     pin = pin.substring(0, pin.length - 1);

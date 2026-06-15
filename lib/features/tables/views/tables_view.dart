@@ -19,6 +19,8 @@ class TablesView extends StatefulWidget {
 }
 
 class _TablesViewState extends State<TablesView> {
+  String? _lastActionError;
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +33,19 @@ class _TablesViewState extends State<TablesView> {
   Widget build(BuildContext context) {
     return Consumer<TablesViewModel>(
       builder: (context, viewModel, child) {
+        if (viewModel.actionErrorMessage != null &&
+            viewModel.actionErrorMessage != _lastActionError) {
+          final actionError = viewModel.actionErrorMessage!;
+          _lastActionError = actionError;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(content: Text(actionError)));
+            viewModel.clearActionError();
+          });
+        }
+
         return LoadingOverlay(
           loading: viewModel.isLoading,
           child: PosShell(
@@ -85,15 +100,19 @@ class _TablesViewState extends State<TablesView> {
                                     : () async {
                                         final freeTable = viewModel.tables
                                             .firstWhere((t) => t.isFree);
-                                        await viewModel.ensureOrderForTable(
-                                          freeTable,
-                                        );
-                                        if (context.mounted) {
-                                          Navigator.pushNamed(
-                                            context,
-                                            RouteNames.order,
-                                            arguments: freeTable,
+                                        try {
+                                          await viewModel.ensureOrderForTable(
+                                            freeTable,
                                           );
+                                          if (context.mounted) {
+                                            Navigator.pushNamed(
+                                              context,
+                                              RouteNames.order,
+                                              arguments: freeTable,
+                                            );
+                                          }
+                                        } catch (_) {
+                                          // El ViewModel ya expone el error a la UI.
                                         }
                                       },
                                 icon: Icon(
@@ -128,13 +147,19 @@ class _TablesViewState extends State<TablesView> {
                                   table: table,
                                   responsive: responsive,
                                   onTap: () async {
-                                    await viewModel.ensureOrderForTable(table);
-                                    if (context.mounted) {
-                                      Navigator.pushNamed(
-                                        context,
-                                        RouteNames.order,
-                                        arguments: table,
+                                    try {
+                                      await viewModel.ensureOrderForTable(
+                                        table,
                                       );
+                                      if (context.mounted) {
+                                        Navigator.pushNamed(
+                                          context,
+                                          RouteNames.order,
+                                          arguments: table,
+                                        );
+                                      }
+                                    } catch (_) {
+                                      // El ViewModel ya expone el error a la UI.
                                     }
                                   },
                                 );

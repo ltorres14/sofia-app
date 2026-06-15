@@ -21,14 +21,14 @@ class OrderService {
     }
   }
 
-  Future<void> addItem({
+  Future<Order> addItem({
     required int orderId,
     required int productId,
     int quantity = 1,
     String? notes,
   }) async {
     try {
-      await _client.post(
+      final response = await _client.post(
         '${ApiConstants.orders}/$orderId/items',
         data: {
           'productId': productId,
@@ -36,6 +36,7 @@ class OrderService {
           'notes': notes,
         },
       );
+      return Order.fromJson(response.data as Map<String, dynamic>);
     } catch (error) {
       ApiClient.instance.parseError(error);
     }
