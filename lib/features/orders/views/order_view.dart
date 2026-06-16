@@ -78,11 +78,7 @@ class _OrderViewState extends State<OrderView> {
             beverages: viewModel.beverageProducts,
             extras: viewModel.extraProducts,
             isPrimaryProduct: viewModel.isPrimaryProduct(product),
-            onAdd: (
-              selectedProduct,
-              quantity,
-              complements,
-            ) =>
+            onAdd: (selectedProduct, quantity, complements) =>
                 viewModel.addProductWithSelections(
                   mainProduct: selectedProduct,
                   quantity: quantity,
@@ -135,7 +131,8 @@ class _OrderViewState extends State<OrderView> {
 
                     return SingleChildScrollView(
                       padding: EdgeInsets.only(
-                        bottom: MediaQuery.viewPaddingOf(context).bottom +
+                        bottom:
+                            MediaQuery.viewPaddingOf(context).bottom +
                             helper.percentHeight(0.02),
                       ),
                       child: Column(
@@ -212,7 +209,8 @@ class _OrderViewState extends State<OrderView> {
                     return ProductCard(
                       product: product,
                       responsive: responsive,
-                      onTap: () => _showProductDetail(context, viewModel, product),
+                      onTap: () =>
+                          _showProductDetail(context, viewModel, product),
                     );
                   },
                 ),
@@ -232,10 +230,7 @@ class _OrderViewState extends State<OrderView> {
     switch (viewModel.selectedCategory) {
       case OrderViewModel.mainCategory:
         return [
-          _SectionHeader(
-            icon: Icons.restaurant_rounded,
-            title: 'PLATILLOS',
-          ),
+          _SectionHeader(icon: Icons.restaurant_rounded, title: 'PLATILLOS'),
           SizedBox(height: responsive.spacingSm),
           _PlatilloCarousel(
             products: viewModel.mainProducts,
@@ -243,18 +238,17 @@ class _OrderViewState extends State<OrderView> {
             onTap: (product) => _showProductDetail(context, viewModel, product),
           ),
         ];
+
       case OrderViewModel.drinksCategory:
         return [
-          _SectionHeader(
-            icon: Icons.local_drink_rounded,
-            title: 'BEBIDAS',
-          ),
+          _SectionHeader(icon: Icons.local_drink_rounded, title: 'BEBIDAS'),
           SizedBox(height: responsive.spacingSm),
           _BeverageCarousel(
             products: viewModel.beverageProducts,
             onTap: (product) => _showProductDetail(context, viewModel, product),
           ),
         ];
+
       case OrderViewModel.extrasCategory:
         return [
           _SectionHeader(
@@ -267,12 +261,10 @@ class _OrderViewState extends State<OrderView> {
             onTap: (product) => _showProductDetail(context, viewModel, product),
           ),
         ];
+
       default:
         return [
-          _SectionHeader(
-            icon: Icons.restaurant_rounded,
-            title: 'PLATILLOS',
-          ),
+          _SectionHeader(icon: Icons.restaurant_rounded, title: 'PLATILLOS'),
           SizedBox(height: responsive.spacingSm),
           _PlatilloCarousel(
             products: viewModel.mainProducts,
@@ -280,10 +272,7 @@ class _OrderViewState extends State<OrderView> {
             onTap: (product) => _showProductDetail(context, viewModel, product),
           ),
           SizedBox(height: responsive.spacingLg),
-          _SectionHeader(
-            icon: Icons.local_drink_rounded,
-            title: 'BEBIDAS',
-          ),
+          _SectionHeader(icon: Icons.local_drink_rounded, title: 'BEBIDAS'),
           SizedBox(height: responsive.spacingSm),
           _BeverageCarousel(
             products: viewModel.beverageProducts,
@@ -317,16 +306,10 @@ class _OrderSummaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final itemCount = order?.items.fold<int>(
-          0,
-          (sum, item) => sum + item.quantity,
-        ) ??
-        0;
-    final computedTotal = order?.items.fold<double>(
-          0,
-          (sum, item) => sum + item.total,
-        ) ??
-        0;
+    final itemCount =
+        order?.items.fold<int>(0, (sum, item) => sum + item.quantity) ?? 0;
+    final computedTotal =
+        order?.items.fold<double>(0, (sum, item) => sum + item.total) ?? 0;
 
     return Material(
       color: Colors.transparent,
@@ -336,7 +319,7 @@ class _OrderSummaryButton extends StatelessWidget {
         child: Ink(
           padding: EdgeInsets.symmetric(
             horizontal: 18,
-            vertical: compact ? 16 : 22,
+            vertical: compact ? 10 : 16,
           ),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -344,8 +327,8 @@ class _OrderSummaryButton extends StatelessWidget {
             border: Border.all(color: AppColors.border),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x12000000),
-                blurRadius: 22,
+                color: Color(0x14000000),
+                blurRadius: 24,
                 offset: Offset(0, 10),
               ),
             ],
@@ -353,19 +336,19 @@ class _OrderSummaryButton extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: compact ? 60 : 68,
-                height: compact ? 60 : 68,
+                width: compact ? 28 : 37,
+                height: compact ? 28 : 37,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFBE8CA),
-                  borderRadius: BorderRadius.circular(24),
+                  color: const Color(0xFFFFE8CC),
+                  borderRadius: BorderRadius.circular(22),
                 ),
                 child: const Icon(
                   Icons.shopping_bag_outlined,
-                  color: AppColors.primaryAmberDark,
-                  size: 30,
+                  color: AppColors.primaryAmber,
+                  size: 24,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 18),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -374,27 +357,29 @@ class _OrderSummaryButton extends StatelessWidget {
                       CurrencyFormatter.format(computedTotal),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                            height: 1,
-                          ),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                        fontSize: compact ? 12 : 20,
+                        height: 1,
+                      ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       itemCount == 1 ? '1 producto' : '$itemCount productos',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: compact ? 12 : 16,
+                      ),
                     ),
                   ],
                 ),
               ),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.textSecondary,
-                size: 34,
+                color: AppColors.textPrimary,
+                size: 36,
               ),
             ],
           ),
@@ -405,10 +390,7 @@ class _OrderSummaryButton extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.icon,
-    required this.title,
-  });
+  const _SectionHeader({required this.icon, required this.title});
 
   final IconData icon;
   final String title;
@@ -421,20 +403,21 @@ class _SectionHeader extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
+            color: const Color(0xFFFFF1DE),
+            borderRadius: BorderRadius.circular(18),
           ),
-          child: Icon(icon, color: AppColors.primaryAmberDark, size: 21),
+          child: Icon(icon, color: AppColors.primaryAmber, size: 20),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(
           child: Text(
             title,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
-                ),
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+              letterSpacing: -0.2,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
         TextButton(
@@ -451,10 +434,10 @@ class _SectionHeader extends StatelessWidget {
             children: [
               Text(
                 'Ver todos',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
               ),
               SizedBox(width: 2),
-              Icon(Icons.chevron_right_rounded, size: 20),
+              Icon(Icons.chevron_right_rounded, size: 22),
             ],
           ),
         ),
@@ -476,12 +459,10 @@ class _PlatilloCarousel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (products.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (products.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
-      height: 286,
+      height: 250,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: products.length,
@@ -503,22 +484,17 @@ class _PlatilloCarousel extends StatelessWidget {
 }
 
 class _BeverageCarousel extends StatelessWidget {
-  const _BeverageCarousel({
-    required this.products,
-    required this.onTap,
-  });
+  const _BeverageCarousel({required this.products, required this.onTap});
 
   final List<Product> products;
   final ValueChanged<Product> onTap;
 
   @override
   Widget build(BuildContext context) {
-    if (products.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (products.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
-      height: 132,
+      height: 160,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: products.length,
@@ -526,7 +502,7 @@ class _BeverageCarousel extends StatelessWidget {
         itemBuilder: (context, index) {
           final product = products[index];
           return _CompactProductCard(
-            width: 270,
+            width: 170,
             product: product,
             icon: Icons.local_drink_rounded,
             onTap: () => onTap(product),
@@ -538,22 +514,17 @@ class _BeverageCarousel extends StatelessWidget {
 }
 
 class _ExtraCarousel extends StatelessWidget {
-  const _ExtraCarousel({
-    required this.products,
-    required this.onTap,
-  });
+  const _ExtraCarousel({required this.products, required this.onTap});
 
   final List<Product> products;
   final ValueChanged<Product> onTap;
 
   @override
   Widget build(BuildContext context) {
-    if (products.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (products.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
-      height: 210,
+      height: 220,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: products.length,
@@ -590,150 +561,219 @@ class _CompactProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final borderRadius = BorderRadius.circular(28);
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: borderRadius,
         child: Ink(
           width: width,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: borderRadius,
             border: Border.all(color: AppColors.border),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x10000000),
-                blurRadius: 18,
-                offset: Offset(0, 8),
+                color: Color(0x14000000),
+                blurRadius: 24,
+                offset: Offset(0, 10),
               ),
             ],
           ),
-          child: compact
-              ? Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _ProductVisual(icon: icon, compact: compact),
-                      const Spacer(),
-                      Text(
-                        product.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              height: 1.1,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              CurrencyFormatter.format(product.price),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(
-                                    color: AppColors.primaryAmber,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ),
-                          _AddCircleButton(onTap: onTap),
-                        ],
-                      ),
-                    ],
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: compact
+                ? _CompactVerticalProductContent(
+                    product: product,
+                    icon: icon,
+                    onTap: onTap,
+                  )
+                : _SmallVerticalProductContent(
+                    product: product,
+                    icon: icon,
+                    onTap: onTap,
                   ),
-                )
-              : Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      _ProductVisual(icon: icon),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              product.name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    height: 1.08,
-                                  ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              CurrencyFormatter.format(product.price),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
-                                  ?.copyWith(
-                                    color: AppColors.primaryAmber,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _AddCircleButton(onTap: onTap),
-                    ],
-                  ),
-                ),
+          ),
         ),
       ),
     );
   }
 }
 
-class _ProductVisual extends StatelessWidget {
-  const _ProductVisual({
+class _SmallVerticalProductContent extends StatelessWidget {
+  const _SmallVerticalProductContent({
+    required this.product,
     required this.icon,
-    this.compact = false,
+    required this.onTap,
   });
+
+  final Product product;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _ProductVisual(icon: icon),
+            const SizedBox(height: 8),
+            Text(
+              product.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                height: 1.08,
+                color: AppColors.textPrimary,
+                fontSize: 14,
+              ),
+            ),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.only(right: 42),
+              child: Text(
+                CurrencyFormatter.format(product.price),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppColors.primaryAmber,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
+        Positioned(
+          right: 0,
+          bottom: 0,
+          child: _SmallAddCircleButton(onTap: onTap),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactVerticalProductContent extends StatelessWidget {
+  const _CompactVerticalProductContent({
+    required this.product,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final Product product;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _ProductVisual(icon: icon, compact: true),
+            const SizedBox(height: 8),
+            Text(
+              product.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                height: 1.08,
+                color: AppColors.textPrimary,
+                fontSize: 14,
+              ),
+            ),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.only(right: 42),
+              child: Text(
+                CurrencyFormatter.format(product.price),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppColors.primaryAmber,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
+        Positioned(
+          right: 0,
+          bottom: 0,
+          child: _SmallAddCircleButton(onTap: onTap),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProductVisual extends StatelessWidget {
+  const _ProductVisual({required this.icon, this.compact = false});
 
   final IconData icon;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final size = compact ? 96.0 : 94.0;
+    final size = compact ? 86.0 : 80.0;
+
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F2E8),
+        color: const Color(0xFFFFF3E2),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Icon(
-        icon,
-        color: AppColors.primaryAmberDark,
-        size: compact ? 34 : 36,
-      ),
+      child: Icon(icon, color: AppColors.primaryAmber, size: compact ? 32 : 34),
     );
   }
 }
 
-class _AddCircleButton extends StatelessWidget {
-  const _AddCircleButton({
-    required this.onTap,
-  });
+class _SmallAddCircleButton extends StatelessWidget {
+  const _SmallAddCircleButton({required this.onTap});
 
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFFFBE8CA),
+      color: const Color(0xFFFFE8CC),
+      borderRadius: BorderRadius.circular(13),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(13),
+        child: const SizedBox(
+          width: 34,
+          height: 34,
+          child: Icon(
+            Icons.add_rounded,
+            color: AppColors.primaryAmber,
+            size: 22,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddCircleButton extends StatelessWidget {
+  const _AddCircleButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFFFE8CC),
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
@@ -743,7 +783,7 @@ class _AddCircleButton extends StatelessWidget {
           height: 56,
           child: Icon(
             Icons.add_rounded,
-            color: AppColors.primaryAmberDark,
+            color: AppColors.primaryAmber,
             size: 30,
           ),
         ),

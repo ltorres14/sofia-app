@@ -22,12 +22,15 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMobilePortrait = responsive.isPortrait && !responsive.isTablet;
+
     final contentPadding = isMobilePortrait
         ? responsive.spacingXs + 2
         : responsive.spacingMd;
+
     final buttonHeight = isMobilePortrait
         ? responsive.orderActionButtonHeight.clamp(36, 40).toDouble()
         : responsive.orderActionButtonHeight;
+
     final headerIcon = _resolveCategoryIcon(product.category);
 
     return Material(
@@ -79,7 +82,7 @@ class ProductCard extends StatelessWidget {
                             ),
                             child: Icon(
                               headerIcon,
-                              color: AppColors.primaryAmberDark,
+                              color: AppColors.primaryAmber,
                               size: isMobilePortrait
                                   ? responsive.iconSize
                                   : responsive.iconSize + 2,
@@ -89,8 +92,8 @@ class ProductCard extends StatelessWidget {
                           SizedBox(
                             width: imageHeight - 8,
                             child: SafeAppImage.asset(
-                              assetPath: BusinessConfig.current
-                                  .placeholderProductAssetPath,
+                              assetPath: BusinessConfig
+                                  .current.placeholderProductAssetPath,
                               width: double.infinity,
                               borderRadius: BorderRadius.circular(14),
                               fallbackIcon: headerIcon,
@@ -116,11 +119,9 @@ class ProductCard extends StatelessWidget {
                                 .textTheme
                                 .titleMedium
                                 ?.copyWith(
-                                  fontSize: isMobilePortrait
-                                      ? responsive.orderBodyFontSize
-                                      : responsive.orderBodyFontSize + 1,
+                                  fontSize: isMobilePortrait ? 14 : 15,
                                   fontWeight: FontWeight.w800,
-                                  height: 1.12,
+                                  height: 1.08,
                                   color: AppColors.textPrimary,
                                 ),
                           ),
@@ -129,30 +130,24 @@ class ProductCard extends StatelessWidget {
                             product.category,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  fontSize: responsive.captionFontSize - 1,
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      fontSize: responsive.captionFontSize - 1,
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                           ),
                           const Spacer(),
                           Text(
                             CurrencyFormatter.format(product.price),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleSmall
-                                ?.copyWith(
-                                  fontSize: isMobilePortrait
-                                      ? responsive.orderBodyFontSize + 1
-                                      : responsive.orderBodyFontSize + 2,
-                                  color: AppColors.primaryAmberDark,
-                                  fontWeight: FontWeight.w900,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.titleSmall?.copyWith(
+                                      fontSize: isMobilePortrait ? 16 : 17,
+                                      color: AppColors.primaryAmber,
+                                      fontWeight: FontWeight.w900,
+                                    ),
                           ),
                         ],
                       ),
@@ -170,8 +165,8 @@ class ProductCard extends StatelessWidget {
                           ),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           visualDensity: VisualDensity.compact,
-                          backgroundColor: const Color(0xFFF6E9D3),
-                          foregroundColor: AppColors.primaryAmberDark,
+                          backgroundColor: const Color(0xFFFFE8CC),
+                          foregroundColor: AppColors.primaryAmber,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -207,12 +202,15 @@ class ProductCard extends StatelessWidget {
 
   IconData _resolveCategoryIcon(String category) {
     final normalized = category.toLowerCase();
+
     if (normalized.contains('bebida') || normalized.contains('drink')) {
       return Icons.local_drink_rounded;
     }
+
     if (normalized.contains('extra') || normalized.contains('complemento')) {
       return Icons.add_circle_outline_rounded;
     }
+
     return Icons.restaurant_rounded;
   }
 }
