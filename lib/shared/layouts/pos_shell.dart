@@ -22,6 +22,8 @@ class PosShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final responsive = AppResponsive.of(context);
+    final hideFooterOnMobilePortrait =
+        responsive.isPortrait && responsive.screenWidth < 600;
 
     return ResponsiveScaffold(
       body: Padding(
@@ -35,13 +37,15 @@ class PosShell extends StatelessWidget {
             ),
             SizedBox(height: responsive.sectionGap),
             Expanded(child: child),
-            SizedBox(height: responsive.spacingSm),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                fontSize: responsive.captionFontSize,
+            if (!hideFooterOnMobilePortrait) ...[
+              SizedBox(height: responsive.spacingSm),
+              Text(
+                title,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontSize: responsive.captionFontSize,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

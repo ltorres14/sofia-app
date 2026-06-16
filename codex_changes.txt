@@ -1,30 +1,439 @@
-diff --git a/lib/core/config/app_environment.dart b/lib/core/config/app_environment.dart
-index b0bb2f2..e62eeab 100644
---- a/lib/core/config/app_environment.dart
-+++ b/lib/core/config/app_environment.dart
-@@ -1,6 +1,6 @@
--class AppEnvironment {
--  static const String baseUrl = String.fromEnvironment(
--    'BASE_URL',
--    defaultValue: 'http://192.168.1.17:5247',
--  );
-+import 'api_config.dart';
+diff --git a/codex_changes.txt b/codex_changes.txt
+index 5727610..e69de29 100644
+--- a/codex_changes.txt
++++ b/codex_changes.txt
+@@ -1,30 +0,0 @@
+-diff --git a/lib/core/config/app_environment.dart b/lib/core/config/app_environment.dart
+-index b0bb2f2..e62eeab 100644
+---- a/lib/core/config/app_environment.dart
+-+++ b/lib/core/config/app_environment.dart
+-@@ -1,6 +1,6 @@
+--class AppEnvironment {
+--  static const String baseUrl = String.fromEnvironment(
+--    'BASE_URL',
+--    defaultValue: 'http://192.168.1.17:5247',
+--  );
+-+import 'api_config.dart';
+-+
+-+class AppEnvironmentConfig {
+-+  static AppEnvironment get current => ApiConfig.environment;
+-+  static String get baseUrl => ApiConfig.baseUrl;
+- }
+-diff --git a/lib/core/constants/api_constants.dart b/lib/core/constants/api_constants.dart
+-index 1fd771c..da4d566 100644
+---- a/lib/core/constants/api_constants.dart
+-+++ b/lib/core/constants/api_constants.dart
+-@@ -1,7 +1,7 @@
+--import '../config/app_environment.dart';
+-+import '../config/api_config.dart';
+- 
+- class ApiConstants {
+--  static String get baseUrl => AppEnvironment.baseUrl;
+-+  static String get baseUrl => ApiConfig.baseUrl;
+- 
+-   static const String authPin = '/api/auth/pin';
+-   static const String authMe = '/api/auth/me';
+diff --git a/lib/core/theme/app_colors.dart b/lib/core/theme/app_colors.dart
+index 36279aa..b4f6804 100644
+--- a/lib/core/theme/app_colors.dart
++++ b/lib/core/theme/app_colors.dart
+@@ -3,15 +3,22 @@ import 'package:flutter/material.dart';
+ import '../config/business_config.dart';
+ 
+ class AppColors {
+-  static Color get primary => BusinessConfig.current.primaryColor;
++  static const Color primaryAmber = Color(0xFFC98A1A);
++  static const Color primaryAmberDark = Color(0xFF8A5B12);
++  static const Color appBackground = Color(0xFFF6F7F8);
++  static const Color tableFree = Color(0xFF4E9F6E);
++  static const Color tableWithOrder = Color(0xFFD4A017);
++  static const Color tableWaitingPayment = Color(0xFFD9534F);
 +
-+class AppEnvironmentConfig {
-+  static AppEnvironment get current => ApiConfig.environment;
-+  static String get baseUrl => ApiConfig.baseUrl;
++  static Color get primary => primaryAmber;
+   static Color get secondary => BusinessConfig.current.secondaryColor;
+-  static Color get accent => BusinessConfig.current.accentColor;
++  static Color get accent => primaryAmberDark;
+   static Color get success => BusinessConfig.current.successColor;
+   static Color get warning => BusinessConfig.current.warningColor;
+   static Color get danger => BusinessConfig.current.dangerColor;
+-  static Color get surface => BusinessConfig.current.surfaceColor;
+-  static const Color textPrimary = Color(0xFF102A43);
+-  static const Color textSecondary = Color(0xFF52606D);
++  static Color get surface => appBackground;
++  static const Color textPrimary = Color(0xFF1F2937);
++  static const Color textSecondary = Color(0xFF6B7280);
+   static const Color white = Colors.white;
+-  static const Color border = Color(0xFFD9E2EC);
++  static const Color border = Color(0xFFE5E7EB);
  }
-diff --git a/lib/core/constants/api_constants.dart b/lib/core/constants/api_constants.dart
-index 1fd771c..da4d566 100644
---- a/lib/core/constants/api_constants.dart
-+++ b/lib/core/constants/api_constants.dart
-@@ -1,7 +1,7 @@
--import '../config/app_environment.dart';
-+import '../config/api_config.dart';
+diff --git a/lib/core/theme/app_theme.dart b/lib/core/theme/app_theme.dart
+index 6b1ee4d..4eab559 100644
+--- a/lib/core/theme/app_theme.dart
++++ b/lib/core/theme/app_theme.dart
+@@ -1,7 +1,6 @@
+ import 'package:flutter/material.dart';
+ import 'package:google_fonts/google_fonts.dart';
  
- class ApiConstants {
--  static String get baseUrl => AppEnvironment.baseUrl;
-+  static String get baseUrl => ApiConfig.baseUrl;
+-import '../config/business_config.dart';
+ import 'app_colors.dart';
  
-   static const String authPin = '/api/auth/pin';
-   static const String authMe = '/api/auth/me';
+ class AppTheme {
+@@ -16,7 +15,7 @@ class AppTheme {
+     return ThemeData(
+       useMaterial3: true,
+       colorScheme: colorScheme,
+-      scaffoldBackgroundColor: AppColors.surface,
++      scaffoldBackgroundColor: AppColors.appBackground,
+       textTheme: GoogleFonts.nunitoTextTheme(),
+       appBarTheme: AppBarTheme(
+         backgroundColor: Colors.transparent,
+@@ -31,14 +30,24 @@ class AppTheme {
+       cardTheme: CardThemeData(
+         color: Colors.white,
+         elevation: 0,
++        shadowColor: Colors.transparent,
+         shape: RoundedRectangleBorder(
+-          borderRadius: BorderRadius.circular(24),
++          borderRadius: BorderRadius.circular(20),
+           side: const BorderSide(color: AppColors.border),
+         ),
+       ),
++      filledButtonTheme: FilledButtonThemeData(
++        style: FilledButton.styleFrom(
++          backgroundColor: AppColors.primaryAmber,
++          foregroundColor: Colors.white,
++          shape: RoundedRectangleBorder(
++            borderRadius: BorderRadius.circular(18),
++          ),
++        ),
++      ),
+       elevatedButtonTheme: ElevatedButtonThemeData(
+         style: ElevatedButton.styleFrom(
+-          backgroundColor: BusinessConfig.current.primaryColor,
++          backgroundColor: AppColors.primaryAmber,
+           foregroundColor: Colors.white,
+           minimumSize: const Size.fromHeight(56),
+           shape: RoundedRectangleBorder(
+diff --git a/lib/features/tables/views/tables_view.dart b/lib/features/tables/views/tables_view.dart
+index 32ffe30..7040191 100644
+--- a/lib/features/tables/views/tables_view.dart
++++ b/lib/features/tables/views/tables_view.dart
+@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
+ import '../../../core/config/business_config.dart';
+ import '../../../core/responsive/app_responsive.dart';
+ import '../../../core/routing/route_names.dart';
++import '../../../core/theme/app_colors.dart';
+ import '../../../shared/layouts/pos_shell.dart';
+ import '../../../shared/widgets/error_state.dart';
+ import '../../../shared/widgets/loading_overlay.dart';
+@@ -54,19 +55,20 @@ class _TablesViewState extends State<TablesView> {
+             trailing: Builder(
+               builder: (context) {
+                 final responsive = AppResponsive.of(context);
+-                return SizedBox(
+-                  height: responsive.buttonHeight,
+-                  child: FilledButton.icon(
+-                    onPressed: viewModel.load,
+-                    icon: Icon(
+-                      Icons.refresh_rounded,
+-                      size: responsive.iconSize,
+-                    ),
+-                    label: Text(
+-                      'Actualizar',
+-                      style: TextStyle(fontSize: responsive.bodyFontSize),
++                return IconButton.filled(
++                  onPressed: viewModel.load,
++                  tooltip: 'Actualizar',
++                  style: IconButton.styleFrom(
++                    backgroundColor: AppColors.primaryAmber,
++                    foregroundColor: Colors.white,
++                    minimumSize: Size.square(
++                      responsive.buttonHeight.clamp(48, 56),
+                     ),
+                   ),
++                  icon: Icon(
++                    Icons.refresh_rounded,
++                    size: responsive.iconSize,
++                  ),
+                 );
+               },
+             ),
+@@ -89,46 +91,45 @@ class _TablesViewState extends State<TablesView> {
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         children: [
+                           TableStatusLegend(responsive: responsive),
+-                          SizedBox(height: responsive.sectionGap),
++                          SizedBox(height: responsive.spacingXs),
+                           Align(
+                             alignment: Alignment.centerRight,
+-                            child: SizedBox(
+-                              height: responsive.buttonHeight,
+-                              child: FilledButton.icon(
+-                                onPressed: viewModel.tables.isEmpty
+-                                    ? null
+-                                    : () async {
+-                                        final freeTable = viewModel.tables
+-                                            .firstWhere((t) => t.isFree);
+-                                        try {
+-                                          await viewModel.ensureOrderForTable(
+-                                            freeTable,
++                            child: IconButton.filled(
++                              onPressed: viewModel.tables.isEmpty
++                                  ? null
++                                  : () async {
++                                      final freeTable = viewModel.tables
++                                          .firstWhere((t) => t.isFree);
++                                      try {
++                                        await viewModel.ensureOrderForTable(
++                                          freeTable,
++                                        );
++                                        if (context.mounted) {
++                                          Navigator.pushNamed(
++                                            context,
++                                            RouteNames.order,
++                                            arguments: freeTable,
+                                           );
+-                                          if (context.mounted) {
+-                                            Navigator.pushNamed(
+-                                              context,
+-                                              RouteNames.order,
+-                                              arguments: freeTable,
+-                                            );
+-                                          }
+-                                        } catch (_) {
+-                                          // El ViewModel ya expone el error a la UI.
+                                         }
+-                                      },
+-                                icon: Icon(
+-                                  Icons.add_box_rounded,
+-                                  size: responsive.iconSize,
+-                                ),
+-                                label: Text(
+-                                  'Nueva orden / Asignar mesa',
+-                                  style: TextStyle(
+-                                    fontSize: responsive.bodyFontSize,
+-                                  ),
++                                      } catch (_) {
++                                        // El ViewModel ya expone el error a la UI.
++                                      }
++                                    },
++                              tooltip: 'Nueva orden',
++                              style: IconButton.styleFrom(
++                                backgroundColor: AppColors.primaryAmber,
++                                foregroundColor: Colors.white,
++                                minimumSize: Size.square(
++                                  responsive.buttonHeight.clamp(48, 56),
+                                 ),
+                               ),
++                              icon: Icon(
++                                Icons.add_rounded,
++                                size: responsive.iconSize,
++                              ),
+                             ),
+                           ),
+-                          SizedBox(height: responsive.sectionGap),
++                          SizedBox(height: responsive.spacingSm),
+                           Expanded(
+                             child: GridView.builder(
+                               itemCount: viewModel.tables.length,
+diff --git a/lib/features/tables/widgets/table_card.dart b/lib/features/tables/widgets/table_card.dart
+index 56e229b..194277e 100644
+--- a/lib/features/tables/widgets/table_card.dart
++++ b/lib/features/tables/widgets/table_card.dart
+@@ -1,6 +1,7 @@
+ import 'package:flutter/material.dart';
+ 
+ import '../../../core/responsive/app_responsive.dart';
++import '../../../core/theme/app_colors.dart';
+ import '../../../data/models/tables/restaurant_table.dart';
+ 
+ class TableCard extends StatelessWidget {
+@@ -18,76 +19,91 @@ class TableCard extends StatelessWidget {
+   @override
+   Widget build(BuildContext context) {
+     final color = table.waitingPayment
+-        ? Colors.red
++        ? AppColors.tableWaitingPayment
+         : table.hasOrder
+-        ? Colors.orange
+-        : Colors.green;
++        ? AppColors.tableWithOrder
++        : AppColors.tableFree;
+     final label = table.waitingPayment
+         ? 'Esperando pago'
+         : table.hasOrder
+         ? 'Con orden'
+         : 'Libre';
++    final cardPadding = responsive.isPortrait
++        ? responsive.spacingSm
++        : (responsive.isTablet ? responsive.spacingMd : responsive.spacingSm);
+     final titleStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+       fontSize: responsive.isPortrait
+           ? (responsive.bodyFontSize + 2).clamp(16, 20).toDouble()
+           : (responsive.bodyFontSize + 3).clamp(17, 22).toDouble(),
+-      fontWeight: FontWeight.w700,
++      fontWeight: FontWeight.w800,
++      color: AppColors.textPrimary,
+     );
+ 
+     return Card(
+       child: InkWell(
+-        borderRadius: BorderRadius.circular(24),
++        borderRadius: BorderRadius.circular(20),
+         onTap: onTap,
+         child: Padding(
+-          padding: EdgeInsets.all(responsive.spacingMd),
++          padding: EdgeInsets.all(cardPadding),
+           child: Column(
+             crossAxisAlignment: CrossAxisAlignment.start,
+             children: [
+               Row(
+-                crossAxisAlignment: CrossAxisAlignment.start,
++                crossAxisAlignment: CrossAxisAlignment.center,
+                 children: [
+                   Icon(
+                     Icons.table_restaurant_rounded,
+                     color: color,
+-                    size: responsive.iconSize + 4,
++                    size: responsive.iconSize + 2,
+                   ),
+-                  SizedBox(width: responsive.spacingSm),
+-                  Expanded(
+-                    child: Align(
+-                      alignment: Alignment.topRight,
+-                      child: FittedBox(
+-                        fit: BoxFit.scaleDown,
+-                        child: Chip(
+-                          visualDensity: VisualDensity.compact,
+-                          label: Text(
+-                            label,
+-                            style: TextStyle(
+-                              fontSize: responsive.captionFontSize,
+-                            ),
+-                          ),
+-                          side: BorderSide.none,
+-                          backgroundColor: color.withValues(alpha: 0.12),
++                  const Spacer(),
++                  DecoratedBox(
++                    decoration: BoxDecoration(
++                      color: color.withValues(alpha: 0.12),
++                      borderRadius: BorderRadius.circular(999),
++                    ),
++                    child: Padding(
++                      padding: EdgeInsets.symmetric(
++                        horizontal: responsive.spacingSm,
++                        vertical: responsive.spacingXs,
++                      ),
++                      child: Text(
++                        label,
++                        maxLines: 1,
++                        overflow: TextOverflow.ellipsis,
++                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
++                          fontSize: responsive.captionFontSize,
++                          color: color,
++                          fontWeight: FontWeight.w800,
+                         ),
+                       ),
+                     ),
+                   ),
+                 ],
+               ),
+-              const Spacer(),
++              SizedBox(height: responsive.spacingSm),
+               Text(
+                 table.name,
+-                maxLines: 2,
++                maxLines: 1,
+                 overflow: TextOverflow.ellipsis,
+                 style: titleStyle,
+               ),
+-              SizedBox(height: responsive.spacingXs),
+-              Text(
+-                'Toca para abrir orden o revisar mesa',
+-                maxLines: 2,
+-                overflow: TextOverflow.ellipsis,
+-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+-                  fontSize: responsive.captionFontSize,
++              const Spacer(),
++              if (table.hasOrder || table.waitingPayment)
++                Align(
++                  alignment: Alignment.bottomLeft,
++                  child: Icon(
++                    table.waitingPayment
++                        ? Icons.receipt_long_rounded
++                        : Icons.shopping_bag_rounded,
++                    size: responsive.iconSize * 0.85,
++                    color: color,
++                  ),
+                 ),
++              if (!(table.hasOrder || table.waitingPayment))
++                SizedBox(height: responsive.spacingXs),
++              SizedBox(
++                height: responsive.spacingXs,
+               ),
+             ],
+           ),
+diff --git a/lib/features/tables/widgets/table_status_legend.dart b/lib/features/tables/widgets/table_status_legend.dart
+index 30c70bd..de3d1ce 100644
+--- a/lib/features/tables/widgets/table_status_legend.dart
++++ b/lib/features/tables/widgets/table_status_legend.dart
+@@ -12,21 +12,21 @@ class TableStatusLegend extends StatelessWidget {
+   Widget build(BuildContext context) {
+     return Wrap(
+       spacing: responsive.spacingSm,
+-      runSpacing: responsive.spacingSm,
++      runSpacing: responsive.spacingXs,
+       children: [
+         _LegendChip(
+           label: 'Libre',
+-          color: Colors.green,
++          color: AppColors.tableFree,
+           responsive: responsive,
+         ),
+         _LegendChip(
+           label: 'Con orden',
+-          color: Colors.orange,
++          color: AppColors.tableWithOrder,
+           responsive: responsive,
+         ),
+         _LegendChip(
+           label: 'Esperando pago',
+-          color: Colors.red,
++          color: AppColors.tableWaitingPayment,
+           responsive: responsive,
+         ),
+       ],
+@@ -53,16 +53,30 @@ class _LegendChip extends StatelessWidget {
+         vertical: responsive.spacingXs,
+       ),
+       decoration: BoxDecoration(
+-        color: color.withValues(alpha: 0.12),
++        color: Colors.white,
+         borderRadius: BorderRadius.circular(999),
+         border: Border.all(color: AppColors.border),
+       ),
+       child: Row(
+         mainAxisSize: MainAxisSize.min,
+         children: [
+-          Icon(Icons.circle, size: responsive.captionFontSize, color: color),
++          Container(
++            width: responsive.captionFontSize * 0.72,
++            height: responsive.captionFontSize * 0.72,
++            decoration: BoxDecoration(
++              color: color,
++              shape: BoxShape.circle,
++            ),
++          ),
+           SizedBox(width: responsive.spacingXs),
+-          Text(label, style: TextStyle(fontSize: responsive.captionFontSize)),
++          Text(
++            label,
++            style: Theme.of(context).textTheme.labelMedium?.copyWith(
++              fontSize: responsive.captionFontSize,
++              color: AppColors.textSecondary,
++              fontWeight: FontWeight.w700,
++            ),
++          ),
+         ],
+       ),
+     );

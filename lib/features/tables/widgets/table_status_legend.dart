@@ -10,26 +10,50 @@ class TableStatusLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: responsive.spacingSm,
-      runSpacing: responsive.spacingSm,
-      children: [
-        _LegendChip(
-          label: 'Libre',
-          color: Colors.green,
-          responsive: responsive,
-        ),
-        _LegendChip(
-          label: 'Con orden',
-          color: Colors.orange,
-          responsive: responsive,
-        ),
-        _LegendChip(
-          label: 'Esperando pago',
-          color: Colors.red,
-          responsive: responsive,
-        ),
-      ],
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(maxHeight: 48),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x127C4A12),
+            blurRadius: 18,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: _LegendChip(
+              label: 'Libre',
+              color: AppColors.tableFree,
+              responsive: responsive,
+            ),
+          ),
+          SizedBox(width: responsive.spacingXs),
+          Expanded(
+            child: _LegendChip(
+              label: 'Con orden',
+              color: AppColors.tableWithOrder,
+              responsive: responsive,
+            ),
+          ),
+          SizedBox(width: responsive.spacingXs),
+          Expanded(
+            child: _LegendChip(
+              label: 'Esperando pago',
+              color: AppColors.tableWaitingPayment,
+              responsive: responsive,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -48,21 +72,38 @@ class _LegendChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: EdgeInsets.symmetric(
-        horizontal: responsive.spacingSm,
-        vertical: responsive.spacingXs,
+        horizontal: responsive.spacingXs + 4,
+        vertical: 6,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.circle, size: responsive.captionFontSize, color: color),
+          Container(
+            width: responsive.captionFontSize * 0.72,
+            height: responsive.captionFontSize * 0.72,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
           SizedBox(width: responsive.spacingXs),
-          Text(label, style: TextStyle(fontSize: responsive.captionFontSize)),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                fontSize: 9.5,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
         ],
       ),
     );
