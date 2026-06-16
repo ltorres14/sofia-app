@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
-import '../../../core/constants/role_constants.dart';
-import '../../../core/routing/route_names.dart';
+import '../../../core/routing/route_access.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/repositories/auth_repository.dart';
 
@@ -72,10 +71,7 @@ class PinLoginViewModel extends ChangeNotifier {
 
     try {
       final response = await _authRepository.login(pin);
-      final role = response.user.role;
-      if (role == RoleConstants.waiter) return RouteNames.tables;
-      if (role == RoleConstants.kitchen) return RouteNames.kitchen;
-      return RouteNames.payments;
+      return RouteAccess.defaultRouteForRole(response.user.role);
     } catch (error) {
       errorMessage = error.toString().replaceFirst('Exception: ', '');
       return null;

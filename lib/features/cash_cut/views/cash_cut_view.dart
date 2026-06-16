@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../shared/layouts/pos_shell.dart';
 import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../viewmodels/cash_cut_view_model.dart';
@@ -29,18 +28,17 @@ class _CashCutViewState extends State<CashCutView> {
       builder: (context, viewModel, child) {
         return LoadingOverlay(
           loading: viewModel.isLoading,
-          child: PosShell(
-            title: 'Corte del día',
-            subtitle: 'Resumen de caja',
-            child: viewModel.errorMessage != null
-                ? ErrorState(message: viewModel.errorMessage!, onRetry: viewModel.load)
-                : Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 520),
-                      child: CashCutSummaryCard(cashCut: viewModel.cashCut),
-                    ),
+          child: viewModel.errorMessage != null
+              ? ErrorState(
+                  message: viewModel.errorMessage!,
+                  onRetry: viewModel.load,
+                )
+              : Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
+                    child: CashCutSummaryCard(cashCut: viewModel.cashCut),
                   ),
-          ),
+                ),
         );
       },
     );

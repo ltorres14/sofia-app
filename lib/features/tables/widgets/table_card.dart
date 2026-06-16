@@ -30,6 +30,16 @@ class TableCard extends StatelessWidget {
             ? 'Con orden'
             : 'Libre';
 
+    final bottomIcon = table.waitingPayment
+        ? Icons.payments_rounded
+        : table.hasOrder
+            ? Icons.restaurant_menu_rounded
+            : Icons.event_seat_rounded;
+
+    // Temporal: cuando agreguemos el campo al modelo, cambia '1' por:
+    // '${table.orderItemsCount}'
+    final String? dishCountText = table.hasOrder ? '1' : null;
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -52,7 +62,6 @@ class TableCard extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             child: Stack(
               children: [
-                // Icono mesa arriba izquierda
                 Positioned(
                   top: 0,
                   left: 0,
@@ -62,8 +71,6 @@ class TableCard extends StatelessWidget {
                     size: 22,
                   ),
                 ),
-
-                // Chip estado arriba derecha
                 Positioned(
                   top: 0,
                   right: 0,
@@ -72,19 +79,15 @@ class TableCard extends StatelessWidget {
                     color: color,
                   ),
                 ),
-
-                // Nombre mesa
                 Positioned(
                   left: 0,
+                  right: 0,
                   bottom: 32,
                   child: Text(
                     table.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
@@ -92,19 +95,13 @@ class TableCard extends StatelessWidget {
                         ),
                   ),
                 ),
-
-                // Indicador inferior SIEMPRE visible
                 Positioned(
                   left: 0,
                   bottom: 0,
                   child: _BottomIndicator(
                     color: color,
-                    icon: table.waitingPayment
-                        ? Icons.payments_rounded
-                        : table.hasOrder
-                            ? Icons.receipt_long_rounded
-                            : Icons.event_seat_rounded,
-                    text: table.hasOrder ? '1' : null,
+                    icon: bottomIcon,
+                    text: dishCountText,
                   ),
                 ),
               ],
@@ -133,10 +130,7 @@ class _StatusChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 5,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         child: Text(
           label,
           maxLines: 1,
