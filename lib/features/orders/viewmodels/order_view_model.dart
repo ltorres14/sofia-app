@@ -71,6 +71,20 @@ class OrderViewModel extends ChangeNotifier {
     return uniqueCategories;
   }
 
+  List<String> get foodCategories {
+    return realProductCategories.where((category) {
+      return !_isBeverageCategory(category) && !_isExtraCategory(category);
+    }).toList();
+  }
+
+  List<String> get beverageCategories {
+    return realProductCategories.where(_isBeverageCategory).toList();
+  }
+
+  List<String> get extraCategories {
+    return realProductCategories.where(_isExtraCategory).toList();
+  }
+
   List<Product> get filteredProducts {
     switch (selectedCategory) {
       case mainCategory:
@@ -100,9 +114,13 @@ class OrderViewModel extends ChangeNotifier {
   }
 
   List<Product> get extraProducts {
-    return products
-        .where((product) => _isExtraCategory(product.category))
-        .toList();
+    return products.where((product) => _isExtraCategory(product.category)).toList();
+  }
+
+  List<Product> productsByCategory(String category) {
+    return products.where((product) {
+      return product.category.trim() == category.trim();
+    }).toList();
   }
 
   bool isPrimaryProduct(Product product) {
@@ -144,12 +162,18 @@ class OrderViewModel extends ChangeNotifier {
 
   void selectCategory(String category) {
     selectedCategory = category;
-    showingCategories = false;
+
+    if (category == mainCategory) {
+      showingCategories = true;
+    } else {
+      showingCategories = false;
+    }
+
     notifyListeners();
   }
 
   void backToCategories() {
-    selectedCategory = allCategory;
+    selectedCategory = mainCategory;
     showingCategories = true;
     notifyListeners();
   }

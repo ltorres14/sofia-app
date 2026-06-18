@@ -13,6 +13,7 @@ import '../../../shared/widgets/loading_overlay.dart';
 import '../viewmodels/order_view_model.dart';
 import '../widgets/current_order_panel.dart';
 import '../widgets/product_card.dart';
+import '../widgets/product_category_card.dart';
 import '../widgets/product_category_sidebar.dart';
 import '../widgets/product_detail_sheet.dart';
 
@@ -87,6 +88,41 @@ class _OrderViewState extends State<OrderView> {
                 table: widget.table,
                 complements: complements,
               );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showCategoryProducts(
+    BuildContext context,
+    OrderViewModel viewModel,
+    String categoryName,
+    List<Product> products,
+  ) async {
+    if (products.isEmpty) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        final sheetResponsive = AppResponsive.of(sheetContext);
+
+        return FractionallySizedBox(
+          heightFactor: sheetResponsive.isPortrait ? 0.88 : 0.94,
+          child: _CategoryProductsSheet(
+            title: categoryName,
+            products: products,
+            responsive: sheetResponsive,
+            onProductTap: (product) {
+              Navigator.of(sheetContext).pop();
+              _showProductDetail(context, viewModel, product);
             },
           ),
         );
@@ -253,11 +289,16 @@ class _OrderViewState extends State<OrderView> {
             title: 'PLATILLOS',
           ),
           SizedBox(height: responsive.spacingSm),
-          _PlatilloCarousel(
-            products: viewModel.mainProducts,
-            responsive: responsive,
-            onTap: (product) {
-              _showProductDetail(context, viewModel, product);
+          _ProductCategoryList(
+            categories: viewModel.foodCategories,
+            productsByCategory: viewModel.productsByCategory,
+            onTap: (category, products) {
+              _showCategoryProducts(
+                context,
+                viewModel,
+                category,
+                products,
+              );
             },
           ),
         ];
@@ -269,10 +310,16 @@ class _OrderViewState extends State<OrderView> {
             title: 'BEBIDAS',
           ),
           SizedBox(height: responsive.spacingSm),
-          _BeverageCarousel(
-            products: viewModel.beverageProducts,
-            onTap: (product) {
-              _showProductDetail(context, viewModel, product);
+          _ProductCategoryList(
+            categories: viewModel.beverageCategories,
+            productsByCategory: viewModel.productsByCategory,
+            onTap: (category, products) {
+              _showCategoryProducts(
+                context,
+                viewModel,
+                category,
+                products,
+              );
             },
           ),
         ];
@@ -284,10 +331,16 @@ class _OrderViewState extends State<OrderView> {
             title: 'EXTRAS',
           ),
           SizedBox(height: responsive.spacingSm),
-          _ExtraCarousel(
-            products: viewModel.extraProducts,
-            onTap: (product) {
-              _showProductDetail(context, viewModel, product);
+          _ProductCategoryList(
+            categories: viewModel.extraCategories,
+            productsByCategory: viewModel.productsByCategory,
+            onTap: (category, products) {
+              _showCategoryProducts(
+                context,
+                viewModel,
+                category,
+                products,
+              );
             },
           ),
         ];
@@ -299,11 +352,16 @@ class _OrderViewState extends State<OrderView> {
             title: 'PLATILLOS',
           ),
           SizedBox(height: responsive.spacingSm),
-          _PlatilloCarousel(
-            products: viewModel.mainProducts,
-            responsive: responsive,
-            onTap: (product) {
-              _showProductDetail(context, viewModel, product);
+          _ProductCategoryList(
+            categories: viewModel.foodCategories,
+            productsByCategory: viewModel.productsByCategory,
+            onTap: (category, products) {
+              _showCategoryProducts(
+                context,
+                viewModel,
+                category,
+                products,
+              );
             },
           ),
           SizedBox(height: responsive.spacingLg),
@@ -312,10 +370,16 @@ class _OrderViewState extends State<OrderView> {
             title: 'BEBIDAS',
           ),
           SizedBox(height: responsive.spacingSm),
-          _BeverageCarousel(
-            products: viewModel.beverageProducts,
-            onTap: (product) {
-              _showProductDetail(context, viewModel, product);
+          _ProductCategoryList(
+            categories: viewModel.beverageCategories,
+            productsByCategory: viewModel.productsByCategory,
+            onTap: (category, products) {
+              _showCategoryProducts(
+                context,
+                viewModel,
+                category,
+                products,
+              );
             },
           ),
           SizedBox(height: responsive.spacingLg),
@@ -324,14 +388,148 @@ class _OrderViewState extends State<OrderView> {
             title: 'EXTRAS',
           ),
           SizedBox(height: responsive.spacingSm),
-          _ExtraCarousel(
-            products: viewModel.extraProducts,
-            onTap: (product) {
-              _showProductDetail(context, viewModel, product);
+          _ProductCategoryList(
+            categories: viewModel.extraCategories,
+            productsByCategory: viewModel.productsByCategory,
+            onTap: (category, products) {
+              _showCategoryProducts(
+                context,
+                viewModel,
+                category,
+                products,
+              );
             },
           ),
         ];
     }
+  }
+}
+
+class _ProductCategoryList extends StatelessWidget {
+  const _ProductCategoryList({
+    required this.categories,
+    required this.productsByCategory,
+    required this.onTap,
+  });
+
+  final List<String> categories;
+  final List<Product> Function(String category) productsByCategory;
+  final void Function(String category, List<Product> products) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (categories.isEmpty) {
+      return const _EmptyProductsMessage();
+    }
+
+    return Column(
+      children: [
+        for (final category in categories) ...[
+          ProductCategoryCard(
+            categoryName: category,
+            products: productsByCategory(category),
+            onTap: () => onTap(
+              category,
+              productsByCategory(category),
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+      ],
+    );
+  }
+}
+
+class _CategoryProductsSheet extends StatelessWidget {
+  const _CategoryProductsSheet({
+    required this.title,
+    required this.products,
+    required this.responsive,
+    required this.onProductTap,
+  });
+
+  final String title;
+  final List<Product> products;
+  final AppResponsive responsive;
+  final ValueChanged<Product> onProductTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          12,
+          16,
+          MediaQuery.viewPaddingOf(context).bottom + 16,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                ),
+                Text(
+                  products.length == 1
+                      ? '1 producto'
+                      : '${products.length} productos',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: GridView.builder(
+                itemCount: products.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: responsive.productGridColumns,
+                  mainAxisSpacing: responsive.spacingMd,
+                  crossAxisSpacing: responsive.spacingMd,
+                  mainAxisExtent: responsive.productCardHeight,
+                ),
+                itemBuilder: (context, index) {
+                  final product = products[index];
+
+                  return ProductCard(
+                    product: product,
+                    responsive: responsive,
+                    onTap: () => onProductTap(product),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -471,352 +669,6 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _PlatilloCarousel extends StatelessWidget {
-  const _PlatilloCarousel({
-    required this.products,
-    required this.responsive,
-    required this.onTap,
-  });
-
-  final List<Product> products;
-  final AppResponsive responsive;
-  final ValueChanged<Product> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    if (products.isEmpty) {
-      return const _EmptyProductsMessage();
-    }
-
-    return SizedBox(
-      height: 250,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: products.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 14),
-        itemBuilder: (context, index) {
-          final product = products[index];
-
-          return SizedBox(
-            width: 170,
-            child: ProductCard(
-              product: product,
-              responsive: responsive,
-              onTap: () => onTap(product),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _BeverageCarousel extends StatelessWidget {
-  const _BeverageCarousel({
-    required this.products,
-    required this.onTap,
-  });
-
-  final List<Product> products;
-  final ValueChanged<Product> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    if (products.isEmpty) {
-      return const _EmptyProductsMessage();
-    }
-
-    return SizedBox(
-      height: 160,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: products.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 14),
-        itemBuilder: (context, index) {
-          final product = products[index];
-
-          return _CompactProductCard(
-            width: 170,
-            product: product,
-            icon: Icons.local_drink_rounded,
-            onTap: () => onTap(product),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _ExtraCarousel extends StatelessWidget {
-  const _ExtraCarousel({
-    required this.products,
-    required this.onTap,
-  });
-
-  final List<Product> products;
-  final ValueChanged<Product> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    if (products.isEmpty) {
-      return const _EmptyProductsMessage();
-    }
-
-    return SizedBox(
-      height: 220,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: products.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 14),
-        itemBuilder: (context, index) {
-          final product = products[index];
-
-          return _CompactProductCard(
-            width: 150,
-            product: product,
-            icon: Icons.add_circle_outline_rounded,
-            compact: true,
-            onTap: () => onTap(product),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _CompactProductCard extends StatelessWidget {
-  const _CompactProductCard({
-    required this.width,
-    required this.product,
-    required this.icon,
-    required this.onTap,
-    this.compact = false,
-  });
-
-  final double width;
-  final Product product;
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final borderRadius = BorderRadius.circular(28);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: borderRadius,
-        child: Ink(
-          width: width,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: borderRadius,
-            border: Border.all(color: AppColors.border),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x14000000),
-                blurRadius: 24,
-                offset: Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: compact
-                ? _CompactVerticalProductContent(
-                    product: product,
-                    icon: icon,
-                    onTap: onTap,
-                  )
-                : _SmallVerticalProductContent(
-                    product: product,
-                    icon: icon,
-                    onTap: onTap,
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SmallVerticalProductContent extends StatelessWidget {
-  const _SmallVerticalProductContent({
-    required this.product,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final Product product;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _ProductVisual(icon: icon),
-            const SizedBox(height: 8),
-            Text(
-              product.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    height: 1.08,
-                    color: AppColors.textPrimary,
-                    fontSize: 14,
-                  ),
-            ),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.only(right: 42),
-              child: Text(
-                CurrencyFormatter.format(product.price),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppColors.primaryAmber,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 16,
-                    ),
-              ),
-            ),
-          ],
-        ),
-        Positioned(
-          right: 0,
-          bottom: 0,
-          child: _SmallAddCircleButton(onTap: onTap),
-        ),
-      ],
-    );
-  }
-}
-
-class _CompactVerticalProductContent extends StatelessWidget {
-  const _CompactVerticalProductContent({
-    required this.product,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final Product product;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _ProductVisual(
-              icon: icon,
-              compact: true,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              product.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    height: 1.08,
-                    color: AppColors.textPrimary,
-                    fontSize: 14,
-                  ),
-            ),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.only(right: 42),
-              child: Text(
-                CurrencyFormatter.format(product.price),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppColors.primaryAmber,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 16,
-                    ),
-              ),
-            ),
-          ],
-        ),
-        Positioned(
-          right: 0,
-          bottom: 0,
-          child: _SmallAddCircleButton(onTap: onTap),
-        ),
-      ],
-    );
-  }
-}
-
-class _ProductVisual extends StatelessWidget {
-  const _ProductVisual({
-    required this.icon,
-    this.compact = false,
-  });
-
-  final IconData icon;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final size = compact ? 86.0 : 80.0;
-
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF3E2),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Icon(
-        icon,
-        color: AppColors.primaryAmber,
-        size: compact ? 32 : 34,
-      ),
-    );
-  }
-}
-
-class _SmallAddCircleButton extends StatelessWidget {
-  const _SmallAddCircleButton({
-    required this.onTap,
-  });
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFFFFE8CC),
-      borderRadius: BorderRadius.circular(13),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(13),
-        child: const SizedBox(
-          width: 34,
-          height: 34,
-          child: Icon(
-            Icons.add_rounded,
-            color: AppColors.primaryAmber,
-            size: 22,
-          ),
-        ),
-      ),
     );
   }
 }
