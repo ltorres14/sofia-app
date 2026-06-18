@@ -15,10 +15,10 @@ class OrderViewModel extends ChangeNotifier {
     required OrderRepository orderRepository,
     required TableRepository tableRepository,
     required AuthRepository authRepository,
-  })  : _productRepository = productRepository,
-        _orderRepository = orderRepository,
-        _tableRepository = tableRepository,
-        _authRepository = authRepository;
+  }) : _productRepository = productRepository,
+       _orderRepository = orderRepository,
+       _tableRepository = tableRepository,
+       _authRepository = authRepository;
 
   final ProductRepository _productRepository;
   final OrderRepository _orderRepository;
@@ -54,11 +54,11 @@ class OrderViewModel extends ChangeNotifier {
   String? errorMessage;
 
   List<String> get categories => const [
-        allCategory,
-        mainCategory,
-        drinksCategory,
-        extrasCategory,
-      ];
+    allCategory,
+    mainCategory,
+    drinksCategory,
+    extrasCategory,
+  ];
 
   List<String> get realProductCategories {
     final uniqueCategories = <String>{
@@ -114,7 +114,9 @@ class OrderViewModel extends ChangeNotifier {
   }
 
   List<Product> get extraProducts {
-    return products.where((product) => _isExtraCategory(product.category)).toList();
+    return products
+        .where((product) => _isExtraCategory(product.category))
+        .toList();
   }
 
   List<Product> productsByCategory(String category) {
@@ -265,7 +267,6 @@ class OrderViewModel extends ChangeNotifier {
     final normalized = _normalize(category);
 
     return normalized.contains('bebida') ||
-        normalized.contains('bebidas') ||
         normalized.contains('drink') ||
         normalized.contains('refresco') ||
         normalized.contains('agua') ||
@@ -276,13 +277,9 @@ class OrderViewModel extends ChangeNotifier {
     final normalized = _normalize(category);
 
     return normalized.contains('extra') ||
-        normalized.contains('extras') ||
         normalized.contains('complemento') ||
-        normalized.contains('complementos') ||
         normalized.contains('salsa') ||
-        normalized.contains('salsas') ||
         normalized.contains('tortilla') ||
-        normalized.contains('tortillas') ||
         normalized.contains('adicional');
   }
 
@@ -330,8 +327,8 @@ class OrderViewModel extends ChangeNotifier {
 
     if (leftIndex == -1 && rightIndex == -1) {
       return normalizedLeft.toLowerCase().compareTo(
-            normalizedRight.toLowerCase(),
-          );
+        normalizedRight.toLowerCase(),
+      );
     }
 
     if (leftIndex == -1) return 1;
@@ -341,6 +338,15 @@ class OrderViewModel extends ChangeNotifier {
   }
 
   String _normalize(String value) {
-    return value.toLowerCase().trim();
+    return value
+        .toLowerCase()
+        .trim()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n');
   }
 }

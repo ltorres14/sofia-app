@@ -63,6 +63,18 @@ class _OrderViewState extends State<OrderView> {
     OrderViewModel viewModel,
     Product product,
   ) async {
+    final isPrimaryProduct = viewModel.isPrimaryProduct(product);
+    final beverages = isPrimaryProduct
+        ? viewModel.beverageProducts
+              .where((candidate) => candidate.id != product.id)
+              .toList()
+        : const <Product>[];
+    final extras = isPrimaryProduct
+        ? viewModel.extraProducts
+              .where((candidate) => candidate.id != product.id)
+              .toList()
+        : const <Product>[];
+
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -78,9 +90,9 @@ class _OrderViewState extends State<OrderView> {
           heightFactor: sheetResponsive.isPortrait ? 0.92 : 0.94,
           child: ProductDetailSheet(
             product: product,
-            beverages: viewModel.beverageProducts,
-            extras: viewModel.extraProducts,
-            isPrimaryProduct: viewModel.isPrimaryProduct(product),
+            beverages: beverages,
+            extras: extras,
+            isPrimaryProduct: isPrimaryProduct,
             onAdd: (selectedProduct, quantity, complements) async {
               await viewModel.addProductWithSelections(
                 mainProduct: selectedProduct,
