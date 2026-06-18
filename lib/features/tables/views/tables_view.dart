@@ -153,11 +153,11 @@ class _TablesViewState extends State<TablesView> {
                           itemCount: viewModel.tables.length,
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: gridColumns,
-                            crossAxisSpacing: screenWidth * 0.03,
-                            mainAxisSpacing: screenHeight * 0.014,
-                            mainAxisExtent: cardHeight.clamp(104.0, 124.0),
-                          ),
+                                crossAxisCount: gridColumns,
+                                crossAxisSpacing: screenWidth * 0.03,
+                                mainAxisSpacing: screenHeight * 0.018,
+                                mainAxisExtent: cardHeight.clamp(170.0, 190.0),
+                              ),
                           itemBuilder: (context, index) {
                             final table = viewModel.tables[index];
 
@@ -234,10 +234,10 @@ class _TablesHeader extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                  fontSize: isMobilePortrait ? 13 : 16,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: AppColors.textSecondary,
+              fontSize: isMobilePortrait ? 13 : 16,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         SizedBox(width: screenWidth * 0.02),
@@ -245,14 +245,6 @@ class _TablesHeader extends StatelessWidget {
           icon: Icons.refresh_rounded,
           onPressed: onRefresh,
           filled: false,
-          size: buttonSize.clamp(40.0, 46.0),
-          iconSize: iconSize,
-        ),
-        SizedBox(width: screenWidth * 0.02),
-        _HeaderActionButton(
-          icon: Icons.add_rounded,
-          onPressed: onCreateOrder,
-          filled: true,
           size: buttonSize.clamp(40.0, 46.0),
           iconSize: iconSize,
         ),

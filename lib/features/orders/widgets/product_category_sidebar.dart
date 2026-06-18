@@ -13,7 +13,7 @@ class ProductCategorySidebar extends StatelessWidget {
   });
 
   final List<String> categories;
-  final String selectedCategory;
+  final String? selectedCategory;
   final ValueChanged<String> onSelected;
   final AppResponsive responsive;
 
@@ -52,13 +52,16 @@ class ProductCategorySidebar extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: () => onSelected(category),
                   style: OutlinedButton.styleFrom(
-                    backgroundColor:
-                        selected ? AppColors.primaryAmber : Colors.white,
-                    foregroundColor:
-                        selected ? Colors.white : AppColors.textPrimary,
+                    backgroundColor: selected
+                        ? AppColors.primaryAmber
+                        : Colors.white,
+                    foregroundColor: selected
+                        ? Colors.white
+                        : AppColors.textPrimary,
                     side: BorderSide(
-                      color:
-                          selected ? AppColors.primaryAmber : AppColors.border,
+                      color: selected
+                          ? AppColors.primaryAmber
+                          : AppColors.border,
                     ),
                     minimumSize: Size(
                       isHorizontal ? 0 : double.infinity,
@@ -86,8 +89,9 @@ class ProductCategorySidebar extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: responsive.categoryButtonFontSize - 0.5,
-                            fontWeight:
-                                selected ? FontWeight.w800 : FontWeight.w700,
+                            fontWeight: selected
+                                ? FontWeight.w800
+                                : FontWeight.w700,
                           ),
                         ),
                       ),
@@ -106,12 +110,16 @@ class ProductCategorySidebar extends StatelessWidget {
     switch (category) {
       case 'Todos':
         return Icons.grid_view_rounded;
-      case 'Platillos':
+      case 'Tostadas':
         return Icons.restaurant_rounded;
+      case 'Tostitos':
+        return Icons.lunch_dining_rounded;
+      case 'Cócteles':
+        return Icons.local_bar_rounded;
+      case 'Especialidades':
+        return Icons.star_rounded;
       case 'Bebidas':
         return Icons.local_drink_rounded;
-      case 'Extras':
-        return Icons.add_circle_outline_rounded;
       default:
         return Icons.category_rounded;
     }

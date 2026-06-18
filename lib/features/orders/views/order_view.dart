@@ -42,6 +42,7 @@ class _OrderViewState extends State<OrderView> {
       ),
       builder: (sheetContext) {
         final sheetResponsive = AppResponsive.of(sheetContext);
+
         return FractionallySizedBox(
           heightFactor: sheetResponsive.isPortrait ? 0.88 : 0.94,
           child: CurrentOrderPanel(
@@ -61,7 +62,7 @@ class _OrderViewState extends State<OrderView> {
     OrderViewModel viewModel,
     Product product,
   ) async {
-    await showModalBottomSheet<void>(
+    return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -71,6 +72,7 @@ class _OrderViewState extends State<OrderView> {
       ),
       builder: (sheetContext) {
         final sheetResponsive = AppResponsive.of(sheetContext);
+
         return FractionallySizedBox(
           heightFactor: sheetResponsive.isPortrait ? 0.92 : 0.94,
           child: ProductDetailSheet(
@@ -78,13 +80,14 @@ class _OrderViewState extends State<OrderView> {
             beverages: viewModel.beverageProducts,
             extras: viewModel.extraProducts,
             isPrimaryProduct: viewModel.isPrimaryProduct(product),
-            onAdd: (selectedProduct, quantity, complements) =>
-                viewModel.addProductWithSelections(
-                  mainProduct: selectedProduct,
-                  quantity: quantity,
-                  table: widget.table,
-                  complements: complements,
-                ),
+            onAdd: (selectedProduct, quantity, complements) async {
+              await viewModel.addProductWithSelections(
+                mainProduct: selectedProduct,
+                quantity: quantity,
+                table: widget.table,
+                complements: complements,
+              );
+            },
           ),
         );
       },
@@ -94,6 +97,7 @@ class _OrderViewState extends State<OrderView> {
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<OrderViewModel>().load(widget.table);
     });
@@ -119,7 +123,6 @@ class _OrderViewState extends State<OrderView> {
                         constraints.maxHeight,
                       ),
                     );
-                    final helper = ResponsiveHelper(context);
 
                     if (!responsive.isPortrait) {
                       return _buildLandscapeContent(
@@ -129,42 +132,55 @@ class _OrderViewState extends State<OrderView> {
                       );
                     }
 
-                    return SingleChildScrollView(
-                      padding: EdgeInsets.only(
-                        bottom:
-                            MediaQuery.viewPaddingOf(context).bottom +
-                            helper.percentHeight(0.02),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _OrderSummaryButton(
-                            order: viewModel.order,
-                            onTap: () => _showOrderDetails(context, viewModel),
-                          ),
-                          SizedBox(height: responsive.spacingMd),
-                          SizedBox(
-                            height: responsive.categoryButtonHeight + 4,
-                            child: ProductCategorySidebar(
-                              categories: viewModel.categories,
-                              selectedCategory: viewModel.selectedCategory,
-                              onSelected: viewModel.selectCategory,
-                              responsive: responsive,
-                            ),
-                          ),
-                          SizedBox(height: responsive.spacingLg),
-                          ..._buildMobileSections(
-                            context,
-                            viewModel,
-                            responsive,
-                          ),
-                        ],
-                      ),
+                    return _buildMobileContent(
+                      context,
+                      viewModel,
+                      responsive,
                     );
                   },
                 ),
         );
       },
+    );
+  }
+
+  Widget _buildMobileContent(
+    BuildContext context,
+    OrderViewModel viewModel,
+    AppResponsive responsive,
+  ) {
+    final helper = ResponsiveHelper(context);
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.viewPaddingOf(context).bottom +
+            helper.percentHeight(0.02),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _OrderSummaryButton(
+            order: viewModel.order,
+            onTap: () => _showOrderDetails(context, viewModel),
+          ),
+          SizedBox(height: responsive.spacingMd),
+          SizedBox(
+            height: responsive.categoryButtonHeight + 4,
+            child: ProductCategorySidebar(
+              categories: viewModel.categories,
+              selectedCategory: viewModel.selectedCategory,
+              onSelected: viewModel.selectCategory,
+              responsive: responsive,
+            ),
+          ),
+          SizedBox(height: responsive.spacingLg),
+          ..._buildMobileSections(
+            context,
+            viewModel,
+            responsive,
+          ),
+        ],
+      ),
     );
   }
 
@@ -206,11 +222,13 @@ class _OrderViewState extends State<OrderView> {
                   ),
                   itemBuilder: (context, index) {
                     final product = viewModel.filteredProducts[index];
+
                     return ProductCard(
                       product: product,
                       responsive: responsive,
-                      onTap: () =>
-                          _showProductDetail(context, viewModel, product),
+                      onTap: () {
+                        _showProductDetail(context, viewModel, product);
+                      },
                     );
                   },
                 ),
@@ -230,63 +248,87 @@ class _OrderViewState extends State<OrderView> {
     switch (viewModel.selectedCategory) {
       case OrderViewModel.mainCategory:
         return [
-          _SectionHeader(icon: Icons.restaurant_rounded, title: 'PLATILLOS'),
+          const _SectionHeader(
+            icon: Icons.restaurant_rounded,
+            title: 'PLATILLOS',
+          ),
           SizedBox(height: responsive.spacingSm),
           _PlatilloCarousel(
             products: viewModel.mainProducts,
             responsive: responsive,
-            onTap: (product) => _showProductDetail(context, viewModel, product),
+            onTap: (product) {
+              _showProductDetail(context, viewModel, product);
+            },
           ),
         ];
 
       case OrderViewModel.drinksCategory:
         return [
-          _SectionHeader(icon: Icons.local_drink_rounded, title: 'BEBIDAS'),
+          const _SectionHeader(
+            icon: Icons.local_drink_rounded,
+            title: 'BEBIDAS',
+          ),
           SizedBox(height: responsive.spacingSm),
           _BeverageCarousel(
             products: viewModel.beverageProducts,
-            onTap: (product) => _showProductDetail(context, viewModel, product),
+            onTap: (product) {
+              _showProductDetail(context, viewModel, product);
+            },
           ),
         ];
 
       case OrderViewModel.extrasCategory:
         return [
-          _SectionHeader(
+          const _SectionHeader(
             icon: Icons.add_circle_outline_rounded,
             title: 'EXTRAS',
           ),
           SizedBox(height: responsive.spacingSm),
           _ExtraCarousel(
             products: viewModel.extraProducts,
-            onTap: (product) => _showProductDetail(context, viewModel, product),
+            onTap: (product) {
+              _showProductDetail(context, viewModel, product);
+            },
           ),
         ];
 
       default:
         return [
-          _SectionHeader(icon: Icons.restaurant_rounded, title: 'PLATILLOS'),
+          const _SectionHeader(
+            icon: Icons.restaurant_rounded,
+            title: 'PLATILLOS',
+          ),
           SizedBox(height: responsive.spacingSm),
           _PlatilloCarousel(
             products: viewModel.mainProducts,
             responsive: responsive,
-            onTap: (product) => _showProductDetail(context, viewModel, product),
+            onTap: (product) {
+              _showProductDetail(context, viewModel, product);
+            },
           ),
           SizedBox(height: responsive.spacingLg),
-          _SectionHeader(icon: Icons.local_drink_rounded, title: 'BEBIDAS'),
+          const _SectionHeader(
+            icon: Icons.local_drink_rounded,
+            title: 'BEBIDAS',
+          ),
           SizedBox(height: responsive.spacingSm),
           _BeverageCarousel(
             products: viewModel.beverageProducts,
-            onTap: (product) => _showProductDetail(context, viewModel, product),
+            onTap: (product) {
+              _showProductDetail(context, viewModel, product);
+            },
           ),
           SizedBox(height: responsive.spacingLg),
-          _SectionHeader(
+          const _SectionHeader(
             icon: Icons.add_circle_outline_rounded,
             title: 'EXTRAS',
           ),
           SizedBox(height: responsive.spacingSm),
           _ExtraCarousel(
             products: viewModel.extraProducts,
-            onTap: (product) => _showProductDetail(context, viewModel, product),
+            onTap: (product) {
+              _showProductDetail(context, viewModel, product);
+            },
           ),
         ];
     }
@@ -308,6 +350,7 @@ class _OrderSummaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final itemCount =
         order?.items.fold<int>(0, (sum, item) => sum + item.quantity) ?? 0;
+
     final computedTotal =
         order?.items.fold<double>(0, (sum, item) => sum + item.total) ?? 0;
 
@@ -368,10 +411,10 @@ class _OrderSummaryButton extends StatelessWidget {
                     Text(
                       itemCount == 1 ? '1 producto' : '$itemCount productos',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: compact ? 12 : 16,
-                      ),
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: compact ? 12 : 16,
+                          ),
                     ),
                   ],
                 ),
@@ -390,7 +433,10 @@ class _OrderSummaryButton extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.icon, required this.title});
+  const _SectionHeader({
+    required this.icon,
+    required this.title,
+  });
 
   final IconData icon;
   final String title;
@@ -406,7 +452,11 @@ class _SectionHeader extends StatelessWidget {
             color: const Color(0xFFFFF1DE),
             borderRadius: BorderRadius.circular(18),
           ),
-          child: Icon(icon, color: AppColors.primaryAmber, size: 20),
+          child: Icon(
+            icon,
+            color: AppColors.primaryAmber,
+            size: 20,
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -418,27 +468,6 @@ class _SectionHeader extends StatelessWidget {
               letterSpacing: -0.2,
               color: AppColors.textPrimary,
             ),
-          ),
-        ),
-        TextButton(
-          onPressed: null,
-          style: TextButton.styleFrom(
-            foregroundColor: AppColors.primaryAmber,
-            disabledForegroundColor: AppColors.primaryAmber,
-            padding: EdgeInsets.zero,
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Ver todos',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-              ),
-              SizedBox(width: 2),
-              Icon(Icons.chevron_right_rounded, size: 22),
-            ],
           ),
         ),
       ],
@@ -459,7 +488,9 @@ class _PlatilloCarousel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (products.isEmpty) return const SizedBox.shrink();
+    if (products.isEmpty) {
+      return const _EmptyProductsMessage();
+    }
 
     return SizedBox(
       height: 250,
@@ -469,6 +500,7 @@ class _PlatilloCarousel extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(width: 14),
         itemBuilder: (context, index) {
           final product = products[index];
+
           return SizedBox(
             width: 170,
             child: ProductCard(
@@ -484,14 +516,19 @@ class _PlatilloCarousel extends StatelessWidget {
 }
 
 class _BeverageCarousel extends StatelessWidget {
-  const _BeverageCarousel({required this.products, required this.onTap});
+  const _BeverageCarousel({
+    required this.products,
+    required this.onTap,
+  });
 
   final List<Product> products;
   final ValueChanged<Product> onTap;
 
   @override
   Widget build(BuildContext context) {
-    if (products.isEmpty) return const SizedBox.shrink();
+    if (products.isEmpty) {
+      return const _EmptyProductsMessage();
+    }
 
     return SizedBox(
       height: 160,
@@ -501,6 +538,7 @@ class _BeverageCarousel extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(width: 14),
         itemBuilder: (context, index) {
           final product = products[index];
+
           return _CompactProductCard(
             width: 170,
             product: product,
@@ -514,14 +552,19 @@ class _BeverageCarousel extends StatelessWidget {
 }
 
 class _ExtraCarousel extends StatelessWidget {
-  const _ExtraCarousel({required this.products, required this.onTap});
+  const _ExtraCarousel({
+    required this.products,
+    required this.onTap,
+  });
 
   final List<Product> products;
   final ValueChanged<Product> onTap;
 
   @override
   Widget build(BuildContext context) {
-    if (products.isEmpty) return const SizedBox.shrink();
+    if (products.isEmpty) {
+      return const _EmptyProductsMessage();
+    }
 
     return SizedBox(
       height: 220,
@@ -531,6 +574,7 @@ class _ExtraCarousel extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(width: 14),
         itemBuilder: (context, index) {
           final product = products[index];
+
           return _CompactProductCard(
             width: 150,
             product: product,
@@ -627,11 +671,11 @@ class _SmallVerticalProductContent extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                height: 1.08,
-                color: AppColors.textPrimary,
-                fontSize: 14,
-              ),
+                    fontWeight: FontWeight.w800,
+                    height: 1.08,
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                  ),
             ),
             const Spacer(),
             Padding(
@@ -641,10 +685,10 @@ class _SmallVerticalProductContent extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppColors.primaryAmber,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                ),
+                      color: AppColors.primaryAmber,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                    ),
               ),
             ),
           ],
@@ -677,18 +721,21 @@ class _CompactVerticalProductContent extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ProductVisual(icon: icon, compact: true),
+            _ProductVisual(
+              icon: icon,
+              compact: true,
+            ),
             const SizedBox(height: 8),
             Text(
               product.name,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                height: 1.08,
-                color: AppColors.textPrimary,
-                fontSize: 14,
-              ),
+                    fontWeight: FontWeight.w800,
+                    height: 1.08,
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                  ),
             ),
             const Spacer(),
             Padding(
@@ -698,10 +745,10 @@ class _CompactVerticalProductContent extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppColors.primaryAmber,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                ),
+                      color: AppColors.primaryAmber,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                    ),
               ),
             ),
           ],
@@ -717,7 +764,10 @@ class _CompactVerticalProductContent extends StatelessWidget {
 }
 
 class _ProductVisual extends StatelessWidget {
-  const _ProductVisual({required this.icon, this.compact = false});
+  const _ProductVisual({
+    required this.icon,
+    this.compact = false,
+  });
 
   final IconData icon;
   final bool compact;
@@ -733,13 +783,19 @@ class _ProductVisual extends StatelessWidget {
         color: const Color(0xFFFFF3E2),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Icon(icon, color: AppColors.primaryAmber, size: compact ? 32 : 34),
+      child: Icon(
+        icon,
+        color: AppColors.primaryAmber,
+        size: compact ? 32 : 34,
+      ),
     );
   }
 }
 
 class _SmallAddCircleButton extends StatelessWidget {
-  const _SmallAddCircleButton({required this.onTap});
+  const _SmallAddCircleButton({
+    required this.onTap,
+  });
 
   final VoidCallback onTap;
 
@@ -765,27 +821,27 @@ class _SmallAddCircleButton extends StatelessWidget {
   }
 }
 
-class _AddCircleButton extends StatelessWidget {
-  const _AddCircleButton({required this.onTap});
-
-  final VoidCallback onTap;
+class _EmptyProductsMessage extends StatelessWidget {
+  const _EmptyProductsMessage();
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFFFFE8CC),
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: const SizedBox(
-          width: 56,
-          height: 56,
-          child: Icon(
-            Icons.add_rounded,
-            color: AppColors.primaryAmber,
-            size: 30,
-          ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 18,
+        vertical: 18,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Text(
+        'No hay productos disponibles en esta categoría.',
+        style: TextStyle(
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

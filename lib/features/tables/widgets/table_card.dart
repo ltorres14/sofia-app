@@ -21,24 +21,20 @@ class TableCard extends StatelessWidget {
     final color = table.waitingPayment
         ? AppColors.tableWaitingPayment
         : table.hasOrder
-            ? AppColors.tableWithOrder
-            : AppColors.tableFree;
+        ? AppColors.tableWithOrder
+        : AppColors.tableFree;
 
     final label = table.waitingPayment
         ? 'Esperando pago'
         : table.hasOrder
-            ? 'Con orden'
-            : 'Libre';
+        ? 'Con orden'
+        : 'Libre';
 
     final bottomIcon = table.waitingPayment
         ? Icons.payments_rounded
         : table.hasOrder
-            ? Icons.restaurant_menu_rounded
-            : Icons.event_seat_rounded;
-
-    // Temporal: cuando agreguemos el campo al modelo, cambia '1' por:
-    // '${table.orderItemsCount}'
-    final String? dishCountText = table.hasOrder ? '1' : null;
+        ? Icons.restaurant_menu_rounded
+        : Icons.event_seat_rounded;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -74,34 +70,34 @@ class TableCard extends StatelessWidget {
                 Positioned(
                   top: 0,
                   right: 0,
-                  child: _StatusChip(
-                    label: label,
-                    color: color,
-                  ),
+                  child: _StatusChip(label: label, color: color),
                 ),
                 Positioned(
                   left: 0,
                   right: 0,
-                  bottom: 32,
-                  child: Text(
-                    table.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                          height: 1.05,
-                        ),
-                  ),
-                ),
-                Positioned(
-                  left: 0,
-                  bottom: 0,
-                  child: _BottomIndicator(
-                    color: color,
-                    icon: bottomIcon,
-                    text: dishCountText,
+                  bottom: 28,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        table.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                              height: 2,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      _OrdersSummary(
+                        count: table.activeOrdersCount,
+                        color: const Color.fromARGB(255, 36, 24, 24),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -114,10 +110,7 @@ class TableCard extends StatelessWidget {
 }
 
 class _StatusChip extends StatelessWidget {
-  const _StatusChip({
-    required this.label,
-    required this.color,
-  });
+  const _StatusChip({required this.label, required this.color});
 
   final String label;
   final Color color;
@@ -136,57 +129,47 @@ class _StatusChip extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontSize: 11,
-                color: color,
-                fontWeight: FontWeight.w800,
-              ),
+            fontSize: 11,
+            color: color,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
     );
   }
 }
 
-class _BottomIndicator extends StatelessWidget {
-  const _BottomIndicator({
-    required this.color,
-    required this.icon,
-    this.text,
-  });
+class _OrdersSummary extends StatelessWidget {
+  const _OrdersSummary({required this.count, required this.color});
 
+  final int count;
   final Color color;
-  final IconData icon;
-  final String? text;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 24,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 14,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final shortText = '🍽️ $count';
+        final fullText = switch (count) {
+          0 => '🍽️ Sin órdenes',
+          1 => '🍽️ 1 orden',
+          _ => '🍽️ $count órdenes',
+        };
+
+        final compact = constraints.maxWidth < 110;
+
+        return Text(
+          compact ? shortText : fullText,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontSize: compact ? 11 : 12,
             color: color,
+            fontWeight: FontWeight.w700,
+            height: 0.5,
           ),
-          if (text != null) ...[
-            const SizedBox(width: 4),
-            Text(
-              text!,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontSize: 12,
-                    color: color,
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 }
