@@ -46,7 +46,6 @@ class _PinLoginViewState extends State<PinLoginView> {
 
     final route = await viewModel.login();
 
-    // limpiar círculos SIEMPRE después de intentar login
     viewModel.clear();
 
     _autoSubmitting = false;
@@ -120,13 +119,12 @@ class _PinLoginBody extends StatelessWidget {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
     final horizontalPadding = screenWidth * 0.06;
-    final logoBoxSize = screenWidth * 0.18;
-    final logoIconSize = logoBoxSize * 0.42;
+    final logoSize = (screenWidth * 0.28).clamp(92.0, 124.0);
 
     final topSpace = screenHeight * 0.035;
-    final headerGap = screenHeight * 0.015;
-    final cardTopGap = screenHeight * 0.025;
-    final footerGap = screenHeight * 0.025;
+    final headerGap = screenHeight * 0.014;
+    final cardTopGap = screenHeight * 0.026;
+    final footerGap = screenHeight * 0.026;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -139,8 +137,7 @@ class _PinLoginBody extends StatelessWidget {
         ),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            minHeight:
-                screenHeight -
+            minHeight: screenHeight -
                 MediaQuery.paddingOf(context).top -
                 MediaQuery.paddingOf(context).bottom -
                 topSpace,
@@ -148,35 +145,29 @@ class _PinLoginBody extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _LogoBox(size: logoBoxSize, iconSize: logoIconSize),
-
+              _BusinessLogo(size: logoSize),
               SizedBox(height: headerGap),
-
               Text(
                 BusinessConfig.current.businessName,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.sectionTitle.copyWith(
-                  color: const Color(0xFF171717),
-                  fontSize: screenWidth * 0.070,
-                  fontWeight: FontWeight.w800,
-                  height: 1.1,
+                  color: AppColors.textPrimary,
+                  fontSize: screenWidth * 0.068,
+                  fontWeight: FontWeight.w900,
+                  height: 1.08,
                 ),
               ),
-
-              SizedBox(height: screenHeight * 0.010),
-
+              SizedBox(height: screenHeight * 0.008),
               Text(
                 'Sistema punto de venta',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.subtitle.copyWith(
-                  color: const Color(0xFF6E6E6E),
-                  fontSize: screenWidth * 0.040,
-                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                  fontSize: screenWidth * 0.039,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-
               SizedBox(height: cardTopGap),
-
               _PinCard(
                 viewModel: viewModel,
                 pinController: pinController,
@@ -185,9 +176,7 @@ class _PinLoginBody extends StatelessWidget {
                 screenWidth: screenWidth,
                 screenHeight: screenHeight,
               ),
-
               SizedBox(height: footerGap),
-
               const _FooterBrand(),
             ],
           ),
@@ -197,32 +186,38 @@ class _PinLoginBody extends StatelessWidget {
   }
 }
 
-class _LogoBox extends StatelessWidget {
-  const _LogoBox({required this.size, required this.iconSize});
+class _BusinessLogo extends StatelessWidget {
+  const _BusinessLogo({required this.size});
 
   final double size;
-  final double iconSize;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: size,
       height: size,
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFCF7),
-        borderRadius: BorderRadius.circular(22),
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFB98633).withOpacity(0.14),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
+            color: AppColors.primary.withOpacity(0.10),
+            blurRadius: 26,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
-      child: Icon(
-        Icons.storefront_rounded,
-        color: const Color(0xFFC97800),
-        size: iconSize,
+      child: Image.asset(
+        BusinessConfig.current.logoAssetPath,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Icon(
+            Icons.storefront_rounded,
+            color: AppColors.primary,
+            size: size * 0.42,
+          );
+        },
       ),
     );
   }
@@ -248,7 +243,7 @@ class _PinCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardPaddingHorizontal = screenWidth * 0.065;
-    final cardPaddingVertical = screenHeight * 0.026;
+    final cardPaddingVertical = screenHeight * 0.027;
     final dotSize = screenWidth * 0.092;
 
     return GestureDetector(
@@ -261,11 +256,15 @@ class _PinCard extends StatelessWidget {
           vertical: cardPaddingVertical,
         ),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFFEFC),
+          color: AppColors.white,
           borderRadius: BorderRadius.circular(34),
+          border: Border.all(
+            color: AppColors.border,
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFB98633).withOpacity(0.13),
+              color: AppColors.primary.withOpacity(0.08),
               blurRadius: 30,
               offset: const Offset(0, 16),
             ),
@@ -275,48 +274,37 @@ class _PinCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const _LockBadge(),
-
             SizedBox(height: screenHeight * 0.018),
-
             Text(
               'Ingresa tu PIN',
               textAlign: TextAlign.center,
               style: AppTextStyles.sectionTitle.copyWith(
-                color: const Color(0xFF171717),
+                color: AppColors.textPrimary,
                 fontSize: screenWidth * 0.064,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w900,
                 height: 1.1,
               ),
             ),
-
             SizedBox(height: screenHeight * 0.010),
-
             Text(
               'Acceso para personal autorizado',
               textAlign: TextAlign.center,
               style: AppTextStyles.subtitle.copyWith(
-                color: const Color(0xFF6E6E6E),
+                color: AppColors.textSecondary,
                 fontSize: screenWidth * 0.036,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
-
             SizedBox(height: screenHeight * 0.030),
-
             _PinDotsIndicator(
               length: AppConstants.pinLength,
               filled: viewModel.pin.length,
               dotSize: dotSize,
             ),
-
-            SizedBox(height: screenHeight * 0.032),
-
+            SizedBox(height: screenHeight * 0.030),
             const _ShieldDivider(),
-
-            SizedBox(height: screenHeight * 0.024),
-
+            SizedBox(height: screenHeight * 0.022),
             const _AuthorizedInfoBox(),
-
             SizedBox(
               height: 1,
               width: double.infinity,
@@ -326,7 +314,6 @@ class _PinCard extends StatelessWidget {
                 onChanged: viewModel.updatePin,
               ),
             ),
-
             if (viewModel.errorMessage != null) ...[
               SizedBox(height: screenHeight * 0.020),
               Text(
@@ -335,7 +322,7 @@ class _PinCard extends StatelessWidget {
                 style: TextStyle(
                   color: AppColors.danger,
                   fontSize: screenWidth * 0.036,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -352,15 +339,15 @@ class _LockBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 64,
-      height: 64,
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFF1DC),
+      width: 62,
+      height: 62,
+      decoration: BoxDecoration(
+        color: AppColors.secondary,
         shape: BoxShape.circle,
       ),
-      child: const Icon(
+      child: Icon(
         Icons.lock_outline_rounded,
-        color: Color(0xFFD07A00),
+        color: AppColors.primary,
         size: 30,
       ),
     );
@@ -390,13 +377,13 @@ class _PinDotsIndicator extends StatelessWidget {
           width: dotSize,
           height: dotSize,
           decoration: BoxDecoration(
-            color: isFilled ? const Color(0xFFD78A22) : Colors.transparent,
+            color: isFilled ? AppColors.primary : Colors.transparent,
             shape: BoxShape.circle,
             border: Border.all(
               color: isFilled
-                  ? const Color(0xFFD78A22)
-                  : const Color(0xFFF0D4A5),
-              width: 2.6,
+                  ? AppColors.primary
+                  : AppColors.primary.withOpacity(0.22),
+              width: 2.5,
             ),
           ),
         );
@@ -412,22 +399,22 @@ class _ShieldDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Container(height: 1, color: const Color(0xFFF0E5D5))),
+        Expanded(child: Container(height: 1, color: AppColors.border)),
         Container(
           width: 38,
           height: 38,
           margin: const EdgeInsets.symmetric(horizontal: 18),
-          decoration: const BoxDecoration(
-            color: Color(0xFFFAF5ED),
+          decoration: BoxDecoration(
+            color: AppColors.secondary,
             shape: BoxShape.circle,
           ),
-          child: const Icon(
+          child: Icon(
             Icons.verified_user_outlined,
-            color: Color(0xFFE4CFAE),
-            size: 22,
+            color: AppColors.primary,
+            size: 21,
           ),
         ),
-        Expanded(child: Container(height: 1, color: const Color(0xFFF0E5D5))),
+        Expanded(child: Container(height: 1, color: AppColors.border)),
       ],
     );
   }
@@ -442,45 +429,48 @@ class _AuthorizedInfoBox extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAF4EA),
+        color: AppColors.secondary,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.primary.withOpacity(0.06),
+        ),
       ),
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
-            decoration: const BoxDecoration(
-              color: Color(0xFFFFF8ED),
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: AppColors.white,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.groups_2_outlined,
-              color: Color(0xFFD3932B),
-              size: 26,
+              color: AppColors.primary,
+              size: 25,
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Solo personal autorizado',
                   style: TextStyle(
-                    color: Color(0xFF171717),
+                    color: AppColors.textPrimary,
                     fontSize: 15,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     height: 1.2,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Mantén tu cuenta segura',
+                  'Meseros • Cocina • Caja',
                   style: TextStyle(
-                    color: Color(0xFF707070),
+                    color: AppColors.textSecondary,
                     fontSize: 13,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                     height: 1.2,
                   ),
                 ),
@@ -536,32 +526,36 @@ class _FooterBrand extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!BusinessConfig.current.showSofiaBranding) {
+      return const SizedBox.shrink();
+    }
+
     return RichText(
       textAlign: TextAlign.center,
-      text: const TextSpan(
+      text: TextSpan(
         children: [
           TextSpan(
             text: 'by ',
             style: TextStyle(
-              color: Color(0xFF7D7D7D),
-              fontSize: 17,
+              color: AppColors.textSecondary,
+              fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
           ),
           TextSpan(
             text: 'SOFÍA',
             style: TextStyle(
-              color: Color(0xFFD07A00),
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
               letterSpacing: 0.4,
             ),
           ),
           TextSpan(
             text: ' Check',
             style: TextStyle(
-              color: Color(0xFF7D7D7D),
-              fontSize: 17,
+              color: AppColors.textSecondary,
+              fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
           ),

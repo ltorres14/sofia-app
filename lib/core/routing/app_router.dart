@@ -8,6 +8,11 @@ import '../../features/orders/views/order_view.dart';
 import '../../features/payments/views/payment_view.dart';
 import '../../features/tables/views/tables_view.dart';
 import '../../shared/layouts/pos_shell.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../features/tables/viewmodels/tables_view_model.dart';
+import '../../shared/widgets/loading_overlay.dart';
+
+import 'package:provider/provider.dart';
 import 'protected_route_page.dart';
 import 'route_names.dart';
 
@@ -20,13 +25,21 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const PinLoginView());
       case RouteNames.tables:
         return MaterialPageRoute(
-          builder: (_) => const ProtectedRoutePage(
+          builder: (_) => ProtectedRoutePage(
             routeName: RouteNames.tables,
-            child: PosShell(
-              title: 'SOFIA Check',
-              subtitle: 'Mesas del turno',
-              currentRoute: RouteNames.tables,
-              child: TablesView(),
+            child: Consumer<TablesViewModel>(
+              builder: (context, viewModel, child) {
+                return LoadingOverlay(
+                  loading: viewModel.isLoading,
+                  child: child!,
+                );
+              },
+              child: const PosShell(
+                title: 'SOFIA Check',
+                subtitle: 'Mesas del turno',
+                currentRoute: RouteNames.tables,
+                child: TablesView(),
+              ),
             ),
           ),
         );
@@ -44,13 +57,11 @@ class AppRouter {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFFE8DDCC),
-                  ),
+                  border: Border.all(color: AppColors.secondary),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.receipt_long_outlined,
-                  color: Color(0xFFB7791F),
+                  color: AppColors.secondary,
                   size: 22,
                 ),
               ),

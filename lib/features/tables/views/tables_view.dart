@@ -271,7 +271,7 @@ class _HeaderActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: filled ? AppColors.primaryAmber : Colors.white,
+      color: filled ? AppColors.primary : Colors.white,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onPressed,
@@ -280,10 +280,10 @@ class _HeaderActionButton extends StatelessWidget {
           width: size,
           height: size,
           decoration: BoxDecoration(
-            color: filled ? AppColors.primaryAmber : Colors.white,
+            color: filled ? AppColors.primary : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: filled ? AppColors.primaryAmber : AppColors.border,
+              color: filled ? AppColors.primary : AppColors.border,
             ),
             boxShadow: const [
               BoxShadow(
@@ -295,7 +295,7 @@ class _HeaderActionButton extends StatelessWidget {
           ),
           child: Icon(
             icon,
-            color: filled ? Colors.white : AppColors.primaryAmber,
+            color: filled ? Colors.white : AppColors.primary,
             size: iconSize,
           ),
         ),

@@ -43,21 +43,31 @@ class BusinessConfig {
     businessName: 'La Casita del Marisco',
     businessSubtitle: 'Mariscos | Restaurante',
     businessType: 'seafood',
+
     logoAssetPath: 'assets/images/businesses/seafood/logo.png',
+
     loginBackgroundAssetPath:
         'assets/images/businesses/seafood/login_background.png',
+
     placeholderProductAssetPath:
         'assets/images/businesses/seafood/placeholder_product.png',
-    primaryColor: Color(0xFF0D3B66),
-    secondaryColor: Color(0xFFF4EFE6),
-    accentColor: Color(0xFF1F7A8C),
-    successColor: Color(0xFF2E9E5B),
-    warningColor: Color(0xFFF4A261),
-    dangerColor: Color(0xFFD1495B),
+
+    // PALETA TOMADA DEL LOGO
+    primaryColor: Color(0xFF062B4F),
+    secondaryColor: Color(0xFFEAF7FF),
+    accentColor: Color(0xFF00AEEF),
+
+    successColor: Color(0xFF7BAE3B),
+    warningColor: Color(0xFFE0A13A),
+    dangerColor: Color(0xFFD9271C),
+
     surfaceColor: Color(0xFFF8FAFC),
+
     footerText: 'SOFÍA Check | Sistema de punto de venta',
+
     currencySymbol: '\$',
     defaultTaxPercent: 0,
+
     showSofiaBranding: true,
   );
 }

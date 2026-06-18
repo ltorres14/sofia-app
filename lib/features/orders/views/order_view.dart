@@ -168,11 +168,7 @@ class _OrderViewState extends State<OrderView> {
                       );
                     }
 
-                    return _buildMobileContent(
-                      context,
-                      viewModel,
-                      responsive,
-                    );
+                    return _buildMobileContent(context, viewModel, responsive);
                   },
                 ),
         );
@@ -189,7 +185,8 @@ class _OrderViewState extends State<OrderView> {
 
     return SingleChildScrollView(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.viewPaddingOf(context).bottom +
+        bottom:
+            MediaQuery.viewPaddingOf(context).bottom +
             helper.percentHeight(0.02),
       ),
       child: Column(
@@ -210,11 +207,7 @@ class _OrderViewState extends State<OrderView> {
             ),
           ),
           SizedBox(height: responsive.spacingLg),
-          ..._buildMobileSections(
-            context,
-            viewModel,
-            responsive,
-          ),
+          ..._buildMobileSections(context, viewModel, responsive),
         ],
       ),
     );
@@ -293,12 +286,7 @@ class _OrderViewState extends State<OrderView> {
             categories: viewModel.foodCategories,
             productsByCategory: viewModel.productsByCategory,
             onTap: (category, products) {
-              _showCategoryProducts(
-                context,
-                viewModel,
-                category,
-                products,
-              );
+              _showCategoryProducts(context, viewModel, category, products);
             },
           ),
         ];
@@ -314,12 +302,7 @@ class _OrderViewState extends State<OrderView> {
             categories: viewModel.beverageCategories,
             productsByCategory: viewModel.productsByCategory,
             onTap: (category, products) {
-              _showCategoryProducts(
-                context,
-                viewModel,
-                category,
-                products,
-              );
+              _showCategoryProducts(context, viewModel, category, products);
             },
           ),
         ];
@@ -335,12 +318,7 @@ class _OrderViewState extends State<OrderView> {
             categories: viewModel.extraCategories,
             productsByCategory: viewModel.productsByCategory,
             onTap: (category, products) {
-              _showCategoryProducts(
-                context,
-                viewModel,
-                category,
-                products,
-              );
+              _showCategoryProducts(context, viewModel, category, products);
             },
           ),
         ];
@@ -356,12 +334,7 @@ class _OrderViewState extends State<OrderView> {
             categories: viewModel.foodCategories,
             productsByCategory: viewModel.productsByCategory,
             onTap: (category, products) {
-              _showCategoryProducts(
-                context,
-                viewModel,
-                category,
-                products,
-              );
+              _showCategoryProducts(context, viewModel, category, products);
             },
           ),
           SizedBox(height: responsive.spacingLg),
@@ -374,12 +347,7 @@ class _OrderViewState extends State<OrderView> {
             categories: viewModel.beverageCategories,
             productsByCategory: viewModel.productsByCategory,
             onTap: (category, products) {
-              _showCategoryProducts(
-                context,
-                viewModel,
-                category,
-                products,
-              );
+              _showCategoryProducts(context, viewModel, category, products);
             },
           ),
           SizedBox(height: responsive.spacingLg),
@@ -392,12 +360,7 @@ class _OrderViewState extends State<OrderView> {
             categories: viewModel.extraCategories,
             productsByCategory: viewModel.productsByCategory,
             onTap: (category, products) {
-              _showCategoryProducts(
-                context,
-                viewModel,
-                category,
-                products,
-              );
+              _showCategoryProducts(context, viewModel, category, products);
             },
           ),
         ];
@@ -428,10 +391,7 @@ class _ProductCategoryList extends StatelessWidget {
           ProductCategoryCard(
             categoryName: category,
             products: productsByCategory(category),
-            onTap: () => onTap(
-              category,
-              productsByCategory(category),
-            ),
+            onTap: () => onTap(category, productsByCategory(category)),
           ),
           const SizedBox(height: 14),
         ],
@@ -507,14 +467,12 @@ class _CategoryProductsSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: GridView.builder(
+              child: ListView.separated(
                 itemCount: products.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: responsive.productGridColumns,
-                  mainAxisSpacing: responsive.spacingMd,
-                  crossAxisSpacing: responsive.spacingMd,
-                  mainAxisExtent: responsive.productCardHeight,
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.viewPaddingOf(context).bottom + 12,
                 ),
+                separatorBuilder: (_, _) => const SizedBox(height: 14),
                 itemBuilder: (context, index) {
                   final product = products[index];
 
@@ -580,12 +538,12 @@ class _OrderSummaryButton extends StatelessWidget {
                 width: compact ? 28 : 37,
                 height: compact ? 28 : 37,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFE8CC),
+                  color: AppColors.secondary,
                   borderRadius: BorderRadius.circular(22),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.shopping_bag_outlined,
-                  color: AppColors.primaryAmber,
+                  color: AppColors.primary,
                   size: 24,
                 ),
               ),
@@ -609,10 +567,10 @@ class _OrderSummaryButton extends StatelessWidget {
                     Text(
                       itemCount == 1 ? '1 producto' : '$itemCount productos',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: compact ? 12 : 16,
-                          ),
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: compact ? 12 : 16,
+                      ),
                     ),
                   ],
                 ),
@@ -631,10 +589,7 @@ class _OrderSummaryButton extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.icon,
-    required this.title,
-  });
+  const _SectionHeader({required this.icon, required this.title});
 
   final IconData icon;
   final String title;
@@ -647,14 +602,10 @@ class _SectionHeader extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: const Color(0xFFFFF1DE),
+            color: AppColors.secondary,
             borderRadius: BorderRadius.circular(18),
           ),
-          child: Icon(
-            icon,
-            color: AppColors.primaryAmber,
-            size: 20,
-          ),
+          child: Icon(icon, color: AppColors.primary, size: 20),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -680,10 +631,7 @@ class _EmptyProductsMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 18,
-        vertical: 18,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),

@@ -32,9 +32,11 @@ class MoreBottomSheet extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFFFFFCF7),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(28),
+          ),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -58,17 +60,17 @@ class MoreBottomSheet extends StatelessWidget {
                   Container(
                     width: 54,
                     height: 54,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF6E9D3),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary,
                       shape: BoxShape.circle,
                     ),
                     alignment: Alignment.center,
                     child: Text(
                       initial,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppColors.primaryAmberDark,
-                        fontWeight: FontWeight.w800,
-                      ),
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -80,11 +82,11 @@ class MoreBottomSheet extends StatelessWidget {
                           trimmedName.isEmpty ? 'Usuario' : trimmedName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w800,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -105,7 +107,7 @@ class MoreBottomSheet extends StatelessWidget {
               const SizedBox(height: 20),
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.68),
+                  color: AppColors.white,
                   borderRadius: BorderRadius.circular(22),
                   border: Border.all(color: AppColors.border),
                 ),
@@ -137,7 +139,7 @@ class MoreBottomSheet extends StatelessWidget {
               const SizedBox(height: 14),
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.68),
+                  color: AppColors.white,
                   borderRadius: BorderRadius.circular(22),
                   border: Border.all(color: AppColors.border),
                 ),
@@ -171,9 +173,7 @@ class _MoreActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = destructive
-        ? AppColors.primaryAmberDark
-        : AppColors.textPrimary;
+    final color = destructive ? AppColors.danger : AppColors.textPrimary;
 
     return Material(
       color: Colors.transparent,
@@ -189,11 +189,15 @@ class _MoreActionTile extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   color: destructive
-                      ? const Color(0xFFF6E9D3)
-                      : const Color(0xFFF7F1E6),
+                      ? AppColors.danger.withOpacity(0.08)
+                      : AppColors.secondary,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(
+                  icon,
+                  color: destructive ? AppColors.danger : AppColors.primary,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(

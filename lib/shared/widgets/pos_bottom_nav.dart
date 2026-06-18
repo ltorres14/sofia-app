@@ -34,14 +34,20 @@ class PosBottomNav extends StatelessWidget {
       top: false,
       minimum: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: Color(0xFFFFFCF7),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(24),
+          ),
+          border: Border.all(
+            color: AppColors.border,
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Color(0x0F000000),
-              blurRadius: 16,
-              offset: Offset(0, -4),
+              color: AppColors.primary.withOpacity(0.08),
+              blurRadius: 18,
+              offset: const Offset(0, -4),
             ),
           ],
         ),
@@ -79,13 +85,14 @@ class _NavItemButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final foreground =
-        isActive ? AppColors.primaryAmberDark : AppColors.textSecondary;
+    final foreground = isActive ? AppColors.primary : AppColors.textSecondary;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       child: Material(
-        color: isActive ? const Color(0xFFF6E9D3) : Colors.transparent,
+        color: isActive
+            ? AppColors.primary.withOpacity(0.08)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
@@ -94,7 +101,11 @@ class _NavItemButton extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(item.icon, size: 22, color: foreground),
+                Icon(
+                  item.icon,
+                  size: 22,
+                  color: foreground,
+                ),
                 const SizedBox(height: 2),
                 Text(
                   item.label,

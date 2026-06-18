@@ -90,10 +90,10 @@ class ProductCategoryCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.chevron_right_rounded,
                   size: 34,
-                  color: AppColors.primaryAmber,
+                  color: AppColors.primary,
                 ),
               ],
             ),

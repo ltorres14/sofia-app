@@ -53,14 +53,14 @@ class ProductCategorySidebar extends StatelessWidget {
                   onPressed: () => onSelected(category),
                   style: OutlinedButton.styleFrom(
                     backgroundColor: selected
-                        ? AppColors.primaryAmber
+                        ? AppColors.primary
                         : Colors.white,
                     foregroundColor: selected
                         ? Colors.white
                         : AppColors.textPrimary,
                     side: BorderSide(
                       color: selected
-                          ? AppColors.primaryAmber
+                          ? AppColors.primary
                           : AppColors.border,
                     ),
                     minimumSize: Size(
