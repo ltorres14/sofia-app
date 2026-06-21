@@ -73,16 +73,21 @@ class OrderViewModel extends ChangeNotifier {
 
   List<String> get foodCategories {
     return realProductCategories.where((category) {
-      return !_isBeverageCategory(category) && !_isExtraCategory(category);
+      return !_matchesCategory(category, drinksCategory) &&
+          !_matchesCategory(category, extrasCategory);
     }).toList();
   }
 
   List<String> get beverageCategories {
-    return realProductCategories.where(_isBeverageCategory).toList();
+    return realProductCategories.where((category) {
+      return _matchesCategory(category, drinksCategory);
+    }).toList();
   }
 
   List<String> get extraCategories {
-    return realProductCategories.where(_isExtraCategory).toList();
+    return realProductCategories.where((category) {
+      return _matchesCategory(category, extrasCategory);
+    }).toList();
   }
 
   List<Product> get filteredProducts {
@@ -108,27 +113,34 @@ class OrderViewModel extends ChangeNotifier {
   }
 
   List<Product> get beverageProducts {
-    return products
-        .where((product) => _isBeverageCategory(product.category))
-        .toList();
+    return products.where((product) {
+      return _productMatchesCategory(product, drinksCategory);
+    }).toList();
   }
 
   List<Product> get extraProducts {
-    return products
-        .where((product) => _isExtraCategory(product.category))
-        .toList();
+    return products.where((product) {
+      return _productMatchesCategory(product, extrasCategory);
+    }).toList();
   }
 
   List<Product> productsByCategory(String category) {
+    if (_matchesCategory(category, drinksCategory)) {
+      return beverageProducts;
+    }
+
+    if (_matchesCategory(category, extrasCategory)) {
+      return extraProducts;
+    }
+
     return products.where((product) {
-      return product.category.trim() == category.trim();
+      return _productMatchesCategory(product, category);
     }).toList();
   }
 
   bool isPrimaryProduct(Product product) {
-    final category = product.category;
-
-    return !_isBeverageCategory(category) && !_isExtraCategory(category);
+    return !_productMatchesCategory(product, drinksCategory) &&
+        !_productMatchesCategory(product, extrasCategory);
   }
 
   Future<void> load(RestaurantTable table) async {
@@ -164,13 +176,7 @@ class OrderViewModel extends ChangeNotifier {
 
   void selectCategory(String category) {
     selectedCategory = category;
-
-    if (category == mainCategory) {
-      showingCategories = true;
-    } else {
-      showingCategories = false;
-    }
-
+    showingCategories = category == mainCategory;
     notifyListeners();
   }
 
@@ -263,24 +269,12 @@ class OrderViewModel extends ChangeNotifier {
     }
   }
 
-  bool _isBeverageCategory(String category) {
-    final normalized = _normalize(category);
-
-    return normalized.contains('bebida') ||
-        normalized.contains('drink') ||
-        normalized.contains('refresco') ||
-        normalized.contains('agua') ||
-        normalized.contains('soda');
+  bool _productMatchesCategory(Product product, String category) {
+    return _matchesCategory(product.category, category);
   }
 
-  bool _isExtraCategory(String category) {
-    final normalized = _normalize(category);
-
-    return normalized.contains('extra') ||
-        normalized.contains('complemento') ||
-        normalized.contains('salsa') ||
-        normalized.contains('tortilla') ||
-        normalized.contains('adicional');
+  bool _matchesCategory(String category, String targetCategory) {
+    return _normalize(category) == _normalize(targetCategory);
   }
 
   List<Product> _sortProducts(List<Product> incomingProducts) {

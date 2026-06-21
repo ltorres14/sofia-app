@@ -42,8 +42,10 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
     final responsive = AppResponsive.of(context);
     final theme = Theme.of(context);
     final total = _calculateTotal();
-    final bottomPadding = (responsive.screenHeight * 0.18).clamp(120.0, 180.0);
     final sheetRadius = responsive.productDetailSheetRadius;
+    final bottomPadding = responsive.isPortrait
+        ? (responsive.screenHeight * 0.15).clamp(108.0, 148.0)
+        : (responsive.screenHeight * 0.17).clamp(112.0, 156.0);
 
     return SafeArea(
       top: false,
@@ -58,6 +60,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
           children: [
             Expanded(
               child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
                 padding: EdgeInsets.fromLTRB(
                   responsive.spacingLg,
                   responsive.spacingSm,
@@ -77,7 +80,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
                         ),
                       ),
                     ),
-                    SizedBox(height: responsive.spacingLg),
+                    SizedBox(height: responsive.spacingMd),
                     _ProductHeroCard(
                       product: widget.product,
                       quantity: _quantity,
@@ -109,7 +112,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
                     ],
                     if (widget.isPrimaryProduct &&
                         widget.extras.isNotEmpty) ...[
-                      SizedBox(height: responsive.spacingLg),
+                      SizedBox(height: responsive.spacingMd),
                       _SectionTitle(
                         title: 'Agrega extras',
                         subtitle: 'Opcional',
@@ -140,12 +143,14 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
               ),
               decoration: BoxDecoration(
                 color: AppColors.white,
-                border: Border(top: BorderSide(color: AppColors.border)),
-                boxShadow: [
+                border: const Border(
+                  top: BorderSide(color: AppColors.border),
+                ),
+                boxShadow: const [
                   BoxShadow(
-                    color: AppColors.textPrimary.withValues(alpha: 0.08),
-                    blurRadius: 18,
-                    offset: Offset(0, -6),
+                    color: Color(0x14000000),
+                    blurRadius: 22,
+                    offset: Offset(0, -8),
                   ),
                 ],
               ),
@@ -159,7 +164,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
                           'Total',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontSize: responsive.orderTitleFontSize,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w900,
                             color: AppColors.textPrimary,
                           ),
                         ),
@@ -183,6 +188,9 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: AppColors.white,
+                        disabledBackgroundColor:
+                            AppColors.primary.withValues(alpha: 0.55),
+                        disabledForegroundColor: AppColors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(18),
                         ),
@@ -191,7 +199,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
                             15.0,
                             17.0,
                           ),
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                       child: Text(_submitting ? 'Agregando...' : 'Agregar'),
@@ -218,17 +226,21 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
 
   double _calculateTotal() {
     var total = widget.product.price * _quantity;
+
     for (final beverage in widget.beverages) {
       total += beverage.price * (_complementQuantities[beverage.id] ?? 0);
     }
+
     for (final extra in widget.extras) {
       total += extra.price * (_complementQuantities[extra.id] ?? 0);
     }
+
     return total;
   }
 
   Future<void> _handleAdd() async {
     setState(() => _submitting = true);
+
     final selections = [
       ...widget.beverages
           .where((product) => (_complementQuantities[product.id] ?? 0) > 0)
@@ -247,7 +259,9 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
             ),
           ),
     ];
+
     await widget.onAdd(widget.product, _quantity, selections);
+
     if (mounted) {
       Navigator.of(context).pop();
     }
@@ -274,20 +288,22 @@ class _ProductHeroCard extends StatelessWidget {
     final theme = Theme.of(context);
     final imagePath = _resolveProductImage(product);
     final icon = _resolveCategoryIcon(product.category);
-    final imageHeight = responsive.productDetailHeroImageHeight;
-    final cardRadius = responsive.productDetailSheetRadius;
-    final imageRadius = responsive.productListImageRadius + 4;
+    final cardRadius = responsive.productListCardRadius;
+    final imageRadius = responsive.productListImageRadius;
+    final imageHeight = responsive.isPortrait
+        ? (responsive.screenHeight * 0.15).clamp(112.0, 138.0)
+        : responsive.productDetailHeroImageHeight;
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(responsive.productListCardPadding + 2),
+      padding: EdgeInsets.all(responsive.productListCardPadding),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(cardRadius),
         border: Border.all(color: AppColors.border),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: AppColors.textPrimary.withValues(alpha: 0.07),
+            color: Color(0x14000000),
             blurRadius: 24,
             offset: Offset(0, 10),
           ),
@@ -296,29 +312,24 @@ class _ProductHeroCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Container(
+          Container(
+            width: double.infinity,
+            height: imageHeight,
+            padding: EdgeInsets.all(responsive.spacingSm),
+            decoration: BoxDecoration(
+              color: _productImageBackground,
+              borderRadius: BorderRadius.circular(imageRadius),
+            ),
+            child: SafeAppImage.asset(
+              assetPath: imagePath,
               width: double.infinity,
-              height: imageHeight,
-              padding: EdgeInsets.all(responsive.spacingSm),
-              decoration: BoxDecoration(
-                color: AppColors.softBackground,
-                borderRadius: BorderRadius.circular(imageRadius),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: SafeAppImage.asset(
-                assetPath: imagePath,
-                width: double.infinity,
-                height: double.infinity,
-                borderRadius: BorderRadius.circular(
-                  responsive.productListImageRadius,
-                ),
-                fallbackIcon: icon,
-                backgroundColor: AppColors.secondary.withValues(alpha: 0.12),
-                iconColor: AppColors.primary,
-                fit: BoxFit.contain,
-                iconSize: responsive.iconSize + 14,
-              ),
+              height: double.infinity,
+              borderRadius: BorderRadius.circular(imageRadius - 6),
+              fallbackIcon: icon,
+              fit: BoxFit.contain,
+              iconSize: responsive.iconSize + 14,
+              iconColor: AppColors.primary,
+              backgroundColor: _productImageBackground,
             ),
           ),
           SizedBox(height: responsive.spacingMd),
@@ -327,9 +338,11 @@ class _ProductHeroCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.headlineSmall?.copyWith(
-              fontSize: responsive.titleFontSize.clamp(24.0, 30.0),
+              fontSize: responsive.isPortrait
+                  ? responsive.productListNameFontSize.clamp(18.0, 22.0)
+                  : responsive.titleFontSize.clamp(24.0, 30.0),
               fontWeight: FontWeight.w900,
-              height: 1.05,
+              height: 1.08,
               color: AppColors.textPrimary,
             ),
           ),
@@ -337,7 +350,7 @@ class _ProductHeroCard extends StatelessWidget {
           Text(
             CurrencyFormatter.format(product.price),
             style: theme.textTheme.titleLarge?.copyWith(
-              fontSize: responsive.orderTotalFontSize,
+              fontSize: responsive.productListPriceFontSize.clamp(19.0, 24.0),
               fontWeight: FontWeight.w900,
               color: AppColors.primary,
             ),
@@ -371,27 +384,42 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontSize: responsive.orderTitleFontSize,
-            fontWeight: FontWeight.w900,
-            color: AppColors.textPrimary,
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: responsive.spacingXs),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontSize: responsive.orderTitleFontSize,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+              ),
+            ),
           ),
-        ),
-        SizedBox(height: responsive.spacingXs),
-        Text(
-          subtitle,
-          style: theme.textTheme.bodySmall?.copyWith(
-            fontSize: responsive.captionFontSize,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w700,
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: responsive.spacingSm,
+              vertical: responsive.spacingXs,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              subtitle,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: responsive.captionFontSize,
+                color: AppColors.primary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -414,20 +442,25 @@ class _ComplementTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final imageName = product.imageName?.trim();
-    final hasImage = imageName != null && imageName.isNotEmpty;
-    final imagePath = hasImage ? _resolveProductImage(product) : null;
+    final imagePath = _resolveProductImage(product);
+    final imageSize = responsive.isPortrait
+        ? responsive.productDetailComplementImageSize.clamp(62.0, 76.0)
+        : responsive.productDetailComplementImageSize.clamp(64.0, 82.0);
 
     return Container(
       margin: EdgeInsets.only(bottom: responsive.spacingSm),
-      padding: EdgeInsets.all(responsive.spacingMd),
+      padding: EdgeInsets.all(
+        responsive.isPortrait
+            ? responsive.spacingSm
+            : responsive.spacingMd,
+      ),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(responsive.productListImageRadius),
+        borderRadius: BorderRadius.circular(responsive.productListCardRadius),
         border: Border.all(color: AppColors.border),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: AppColors.textPrimary.withValues(alpha: 0.06),
+            color: Color(0x10000000),
             blurRadius: 18,
             offset: Offset(0, 8),
           ),
@@ -437,43 +470,34 @@ class _ComplementTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: responsive.productDetailComplementImageSize,
-            height: responsive.productDetailComplementImageSize,
+            width: imageSize,
+            height: imageSize,
             padding: EdgeInsets.all(responsive.spacingXs + 2),
             decoration: BoxDecoration(
-              color: hasImage
-                  ? AppColors.softBackground
-                  : AppColors.secondary.withValues(alpha: 0.16),
+              color: _productImageBackground,
               borderRadius: BorderRadius.circular(
                 responsive.productListImageRadius,
               ),
             ),
-            child: imagePath != null
-                ? SafeAppImage.asset(
-                    assetPath: imagePath,
-                    width: double.infinity,
-                    height: double.infinity,
-                    borderRadius: BorderRadius.circular(
-                      responsive.productListImageRadius - 4,
-                    ),
-                    fallbackIcon: icon,
-                    backgroundColor: AppColors.secondary.withValues(
-                      alpha: 0.16,
-                    ),
-                    iconColor: AppColors.primary,
-                    fit: BoxFit.contain,
-                    iconSize: responsive.iconSize + 6,
-                  )
-                : Icon(
-                    icon,
-                    color: AppColors.primary,
-                    size: responsive.iconSize + 6,
-                  ),
+            child: SafeAppImage.asset(
+              assetPath: imagePath,
+              width: double.infinity,
+              height: double.infinity,
+              borderRadius: BorderRadius.circular(
+                responsive.productListImageRadius - 6,
+              ),
+              fallbackIcon: icon,
+              backgroundColor: _productImageBackground,
+              iconColor: AppColors.primary,
+              fit: BoxFit.contain,
+              iconSize: responsive.iconSize + 4,
+            ),
           ),
           SizedBox(width: responsive.spacingMd),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   product.name,
@@ -481,7 +505,8 @@ class _ComplementTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     fontSize: responsive.orderBodyFontSize.clamp(14.0, 16.0),
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w900,
+                    height: 1.15,
                     color: AppColors.textPrimary,
                   ),
                 ),
@@ -498,18 +523,12 @@ class _ComplementTile extends StatelessWidget {
             ),
           ),
           SizedBox(width: responsive.spacingSm),
-          Flexible(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: _InlineCounter(
-                quantity: quantity,
-                responsive: responsive,
-                onDecrement: quantity > 0
-                    ? () => onChanged(quantity - 1)
-                    : null,
-                onIncrement: () => onChanged(quantity + 1),
-              ),
-            ),
+          _InlineCounter(
+            quantity: quantity,
+            responsive: responsive,
+            compact: true,
+            onDecrement: quantity > 0 ? () => onChanged(quantity - 1) : null,
+            onIncrement: () => onChanged(quantity + 1),
           ),
         ],
       ),
@@ -536,18 +555,16 @@ class _QuantitySelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      runSpacing: responsive.spacingSm,
-      spacing: responsive.spacingSm,
+    return Row(
       children: [
-        Text(
-          label,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontSize: responsive.orderTitleFontSize,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+        Expanded(
+          child: Text(
+            label,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontSize: responsive.orderTitleFontSize,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
         _InlineCounter(
@@ -567,26 +584,28 @@ class _InlineCounter extends StatelessWidget {
     required this.responsive,
     required this.onDecrement,
     required this.onIncrement,
+    this.compact = false,
   });
 
   final int quantity;
   final AppResponsive responsive;
   final VoidCallback? onDecrement;
   final VoidCallback onIncrement;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final buttonSize = responsive.productDetailCounterButtonSize;
-    final textWidth = responsive.isPortrait ? 34.0 : 40.0;
+    final buttonSize = compact
+        ? responsive.productDetailCounterButtonSize.clamp(34.0, 38.0)
+        : responsive.productDetailCounterButtonSize;
+    final textWidth = compact ? 24.0 : 34.0;
+    final spacing = compact ? 4.0 : responsive.spacingSm;
 
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: responsive.spacingXs,
-        vertical: responsive.spacingXs,
-      ),
+      padding: EdgeInsets.all(compact ? 4 : responsive.spacingXs),
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(compact ? 16 : 18),
         border: Border.all(color: AppColors.border),
       ),
       child: Row(
@@ -597,30 +616,32 @@ class _InlineCounter extends StatelessWidget {
             icon: Icons.remove_rounded,
             backgroundColor: onDecrement == null
                 ? AppColors.border
-                : AppColors.secondary.withValues(alpha: 0.12),
+                : AppColors.secondary.withValues(alpha: 0.22),
             iconColor: onDecrement == null
                 ? AppColors.textSecondary
                 : AppColors.textPrimary,
             onPressed: onDecrement,
           ),
-          SizedBox(width: responsive.spacingSm),
+          SizedBox(width: spacing),
           SizedBox(
             width: textWidth,
             child: Text(
               '$quantity',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontSize: responsive.orderTitleFontSize,
+                fontSize: compact
+                    ? responsive.orderBodyFontSize.clamp(13.0, 15.0)
+                    : responsive.orderTitleFontSize,
                 fontWeight: FontWeight.w900,
                 color: AppColors.textPrimary,
               ),
             ),
           ),
-          SizedBox(width: responsive.spacingSm),
+          SizedBox(width: spacing),
           _CounterButton(
             size: buttonSize,
             icon: Icons.add_rounded,
-            backgroundColor: AppColors.accent,
+            backgroundColor: AppColors.primary,
             iconColor: AppColors.white,
             onPressed: onIncrement,
           ),
@@ -655,18 +676,23 @@ class _CounterButton extends StatelessWidget {
         style: IconButton.styleFrom(
           backgroundColor: backgroundColor,
           foregroundColor: iconColor,
+          disabledBackgroundColor: backgroundColor,
+          disabledForegroundColor: iconColor,
           padding: EdgeInsets.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        icon: Icon(icon, size: size * 0.48),
+        icon: Icon(icon, size: size * 0.5),
       ),
     );
   }
 }
 
 const String _productImagesBasePath = 'assets/images/businesses/products/';
+const Color _productImageBackground = Color(0xFFF7F1E6);
 
 String _resolveProductImage(Product product) {
   final imageName = product.imageName?.trim();
@@ -679,34 +705,49 @@ String _resolveProductImage(Product product) {
     return '$_productImagesBasePath$imageName';
   }
 
-  return _resolveFallbackImage(product.category);
+  return _resolveFallbackImage(product.category, product.name);
 }
 
-String _resolveFallbackImage(String category) {
-  final normalized = category.toLowerCase();
+String _resolveFallbackImage(String category, [String? productName]) {
+  final normalizedCategory = category.toLowerCase();
+  final normalizedName = (productName ?? '').toLowerCase();
+  final value = '$normalizedCategory $normalizedName';
 
-  if (normalized.contains('tostada')) {
+  if (value.contains('bebida') ||
+      value.contains('agua') ||
+      value.contains('refresco')) {
+    return '${_productImagesBasePath}refresco_base.png';
+  }
+
+  if (value.contains('extra') ||
+      value.contains('aderezo') ||
+      value.contains('tostada extra') ||
+      value.contains('tostadas')) {
+    return '${_productImagesBasePath}tostadas_extras_base.png';
+  }
+
+  if (value.contains('tostada')) {
     return '${_productImagesBasePath}tostada_base.png';
   }
 
-  if (normalized.contains('tostito')) {
+  if (value.contains('tostito')) {
     return '${_productImagesBasePath}tostitos_base.png';
   }
 
-  if (normalized.contains('cóctel') || normalized.contains('coctel')) {
+  if (value.contains('cóctel') || value.contains('coctel')) {
     return '${_productImagesBasePath}coctel_camaron_base.png';
   }
 
-  if (normalized.contains('aguachile')) {
+  if (value.contains('aguachile')) {
     return '${_productImagesBasePath}aguachile_base.png';
   }
 
-  if (normalized.contains('ceviche') || normalized.contains('especial')) {
-    return '${_productImagesBasePath}ceviche_base.png';
+  if (value.contains('chicharron') || value.contains('chicharrón')) {
+    return '${_productImagesBasePath}chicharron_pescado_base.png';
   }
 
-  if (normalized.contains('chicharron') || normalized.contains('chicharrón')) {
-    return '${_productImagesBasePath}chicharron_pescado_base.png';
+  if (value.contains('ceviche') || value.contains('especial')) {
+    return '${_productImagesBasePath}ceviche_base.png';
   }
 
   return '${_productImagesBasePath}tostada_base.png';
