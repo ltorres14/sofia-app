@@ -7,6 +7,7 @@ import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/order_repository.dart';
 import '../../../data/repositories/product_repository.dart';
 import '../../../data/repositories/table_repository.dart';
+import '../../../data/services/order_service.dart';
 import '../models/product_selection.dart';
 
 class OrderViewModel extends ChangeNotifier {
@@ -35,7 +36,7 @@ class OrderViewModel extends ChangeNotifier {
     mainCategory,
     'Tostadas',
     'Tostitos',
-    'Cócteles',
+    'CÃ³cteles',
     'Especialidades',
     drinksCategory,
     extrasCategory,
@@ -226,21 +227,39 @@ class OrderViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _orderRepository.addItem(
-        orderId: order!.id,
-        productId: mainProduct.id,
-        quantity: quantity,
-      );
+      final selectionItems = <CreateOrderSelectionItemRequest>[
+        CreateOrderSelectionItemRequest(
+          productId: mainProduct.id,
+          quantity: quantity,
+          role: 1,
+          sortOrder: 1,
+          notes: '',
+        ),
+      ];
+
+      var sortOrder = 2;
 
       for (final complement in complements) {
         if (complement.quantity <= 0) continue;
 
-        await _orderRepository.addItem(
-          orderId: order!.id,
-          productId: complement.product.id,
-          quantity: complement.quantity,
+        selectionItems.add(
+          CreateOrderSelectionItemRequest(
+            productId: complement.product.id,
+            quantity: complement.quantity,
+            role: _resolveSelectionRole(complement),
+            sortOrder: sortOrder,
+            notes: '',
+          ),
         );
+        sortOrder++;
       }
+
+      await _orderRepository.addSelection(
+        orderId: order!.id,
+        label: _buildNextSelectionLabel(),
+        notes: '',
+        items: selectionItems,
+      );
 
       order = await _orderRepository.getOpenOrderByTable(table.id);
     } catch (error) {
@@ -335,12 +354,29 @@ class OrderViewModel extends ChangeNotifier {
     return value
         .toLowerCase()
         .trim()
-        .replaceAll('á', 'a')
-        .replaceAll('é', 'e')
-        .replaceAll('í', 'i')
-        .replaceAll('ó', 'o')
-        .replaceAll('ú', 'u')
-        .replaceAll('ü', 'u')
-        .replaceAll('ñ', 'n');
+        .replaceAll('Ã¡', 'a')
+        .replaceAll('Ã©', 'e')
+        .replaceAll('Ã­', 'i')
+        .replaceAll('Ã³', 'o')
+        .replaceAll('Ãº', 'u')
+        .replaceAll('Ã¼', 'u')
+        .replaceAll('Ã±', 'n');
+  }
+
+  int _resolveSelectionRole(ProductSelection selection) {
+    if (_productMatchesCategory(selection.product, drinksCategory)) {
+      return 2;
+    }
+
+    if (_productMatchesCategory(selection.product, extrasCategory)) {
+      return 3;
+    }
+
+    return 3;
+  }
+
+  String _buildNextSelectionLabel() {
+    final nextSequence = (order?.selections.length ?? 0) + 1;
+    return 'Seleccion $nextSequence';
   }
 }

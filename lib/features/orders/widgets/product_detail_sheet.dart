@@ -43,9 +43,6 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
     final theme = Theme.of(context);
     final total = _calculateTotal();
     final sheetRadius = responsive.productDetailSheetRadius;
-    final bottomPadding = responsive.isPortrait
-        ? (responsive.screenHeight * 0.15).clamp(108.0, 148.0)
-        : (responsive.screenHeight * 0.17).clamp(112.0, 156.0);
 
     return SafeArea(
       top: false,
@@ -58,80 +55,81 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
         ),
         child: Column(
           children: [
+            Padding(
+              padding: EdgeInsets.only(
+                top: responsive.spacingSm,
+                bottom: responsive.spacingMd,
+              ),
+              child: Center(
+                child: Container(
+                  width: responsive.isPortrait ? 44 : 56,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+            ),
             Expanded(
-              child: SingleChildScrollView(
+              child: ListView(
                 physics: const BouncingScrollPhysics(),
                 padding: EdgeInsets.fromLTRB(
                   responsive.spacingLg,
-                  responsive.spacingSm,
+                  0,
                   responsive.spacingLg,
-                  bottomPadding,
+                  responsive.spacingLg,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: responsive.isPortrait ? 44 : 56,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: AppColors.border,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: responsive.spacingMd),
-                    _ProductHeroCard(
-                      product: widget.product,
-                      quantity: _quantity,
+                children: [
+                  _ProductHeroCard(
+                    product: widget.product,
+                    quantity: _quantity,
+                    responsive: responsive,
+                    onDecrement: _quantity > 1
+                        ? () => setState(() => _quantity--)
+                        : null,
+                    onIncrement: () => setState(() => _quantity++),
+                  ),
+                  if (widget.isPrimaryProduct &&
+                      widget.beverages.isNotEmpty) ...[
+                    SizedBox(height: responsive.spacingLg),
+                    _SectionTitle(
+                      title: 'Complementa con bebidas',
+                      subtitle: 'Opcional',
                       responsive: responsive,
-                      onDecrement: _quantity > 1
-                          ? () => setState(() => _quantity--)
-                          : null,
-                      onIncrement: () => setState(() => _quantity++),
                     ),
-                    if (widget.isPrimaryProduct &&
-                        widget.beverages.isNotEmpty) ...[
-                      SizedBox(height: responsive.spacingLg),
-                      _SectionTitle(
-                        title: 'Complementa con bebidas',
-                        subtitle: 'Opcional',
+                    SizedBox(height: responsive.spacingSm),
+                    ...widget.beverages.map(
+                      (product) => _ComplementTile(
+                        product: product,
+                        quantity: _complementQuantities[product.id] ?? 0,
+                        icon: Icons.local_drink_rounded,
                         responsive: responsive,
+                        onChanged: (value) =>
+                            _updateComplement(product.id, value),
                       ),
-                      SizedBox(height: responsive.spacingSm),
-                      ...widget.beverages.map(
-                        (product) => _ComplementTile(
-                          product: product,
-                          quantity: _complementQuantities[product.id] ?? 0,
-                          icon: Icons.local_drink_rounded,
-                          responsive: responsive,
-                          onChanged: (value) =>
-                              _updateComplement(product.id, value),
-                        ),
-                      ),
-                    ],
-                    if (widget.isPrimaryProduct &&
-                        widget.extras.isNotEmpty) ...[
-                      SizedBox(height: responsive.spacingMd),
-                      _SectionTitle(
-                        title: 'Agrega extras',
-                        subtitle: 'Opcional',
-                        responsive: responsive,
-                      ),
-                      SizedBox(height: responsive.spacingSm),
-                      ...widget.extras.map(
-                        (product) => _ComplementTile(
-                          product: product,
-                          quantity: _complementQuantities[product.id] ?? 0,
-                          icon: Icons.add_circle_outline_rounded,
-                          responsive: responsive,
-                          onChanged: (value) =>
-                              _updateComplement(product.id, value),
-                        ),
-                      ),
-                    ],
+                    ),
                   ],
-                ),
+                  if (widget.isPrimaryProduct && widget.extras.isNotEmpty) ...[
+                    SizedBox(height: responsive.spacingMd),
+                    _SectionTitle(
+                      title: 'Agrega extras',
+                      subtitle: 'Opcional',
+                      responsive: responsive,
+                    ),
+                    SizedBox(height: responsive.spacingSm),
+                    ...widget.extras.map(
+                      (product) => _ComplementTile(
+                        product: product,
+                        quantity: _complementQuantities[product.id] ?? 0,
+                        icon: Icons.add_circle_outline_rounded,
+                        responsive: responsive,
+                        onChanged: (value) =>
+                            _updateComplement(product.id, value),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             Container(
@@ -143,9 +141,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
               ),
               decoration: BoxDecoration(
                 color: AppColors.white,
-                border: const Border(
-                  top: BorderSide(color: AppColors.border),
-                ),
+                border: const Border(top: BorderSide(color: AppColors.border)),
                 boxShadow: const [
                   BoxShadow(
                     color: Color(0x14000000),
@@ -188,8 +184,9 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: AppColors.white,
-                        disabledBackgroundColor:
-                            AppColors.primary.withValues(alpha: 0.55),
+                        disabledBackgroundColor: AppColors.primary.withValues(
+                          alpha: 0.55,
+                        ),
                         disabledForegroundColor: AppColors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(18),
@@ -450,9 +447,7 @@ class _ComplementTile extends StatelessWidget {
     return Container(
       margin: EdgeInsets.only(bottom: responsive.spacingSm),
       padding: EdgeInsets.all(
-        responsive.isPortrait
-            ? responsive.spacingSm
-            : responsive.spacingMd,
+        responsive.isPortrait ? responsive.spacingSm : responsive.spacingMd,
       ),
       decoration: BoxDecoration(
         color: AppColors.white,

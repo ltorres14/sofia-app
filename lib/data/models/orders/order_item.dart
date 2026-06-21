@@ -20,12 +20,22 @@ class OrderItem {
   double get total => unitPrice * quantity;
 
   factory OrderItem.fromJson(Map<String, dynamic> json) => OrderItem(
-        id: json['id'] as int,
-        productId: json['productId'] as int,
-        productName: json['productName'] as String,
-        quantity: json['quantity'] as int,
-        unitPrice: (json['unitPrice'] as num).toDouble(),
-        notes: json['notes'] as String?,
-        sentToKitchen: json['sentToKitchen'] as bool? ?? false,
-      );
+    id: json['id'] as int,
+    productId: json['productId'] as int,
+    productName: json['productName'] as String,
+    quantity: json['quantity'] as int,
+    unitPrice: (json['unitPrice'] as num).toDouble(),
+    notes: json['notes'] as String?,
+    sentToKitchen: json['sentToKitchen'] as bool? ?? false,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'productId': productId,
+    'productName': productName,
+    'quantity': quantity,
+    'unitPrice': unitPrice,
+    'notes': notes,
+    'sentToKitchen': sentToKitchen,
+  };
 }

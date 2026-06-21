@@ -2,11 +2,13 @@ import '../models/orders/order.dart';
 import '../services/order_service.dart';
 
 class OrderRepository {
-  OrderRepository({OrderService? service}) : _service = service ?? OrderService();
+  OrderRepository({OrderService? service})
+    : _service = service ?? OrderService();
 
   final OrderService _service;
 
-  Future<Order?> getOpenOrderByTable(int tableId) => _service.getOpenOrderByTable(tableId);
+  Future<Order?> getOpenOrderByTable(int tableId) =>
+      _service.getOpenOrderByTable(tableId);
 
   Future<Order> addItem({
     required int orderId,
@@ -19,6 +21,20 @@ class OrderRepository {
       productId: productId,
       quantity: quantity,
       notes: notes,
+    );
+  }
+
+  Future<Order> addSelection({
+    required int orderId,
+    required String label,
+    String? notes,
+    required List<CreateOrderSelectionItemRequest> items,
+  }) {
+    return _service.addSelection(
+      orderId: orderId,
+      label: label,
+      notes: notes,
+      items: items,
     );
   }
 

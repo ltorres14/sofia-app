@@ -516,11 +516,27 @@ class _OrderSummaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final itemCount =
-        order?.items.fold<int>(0, (sum, item) => sum + item.quantity) ?? 0;
+    final selections = order?.selections ?? [];
+    final legacyItems = order?.items ?? [];
 
-    final computedTotal =
-        order?.items.fold<double>(0, (sum, item) => sum + item.total) ?? 0;
+    final itemCount = selections.isNotEmpty
+        ? selections.fold<int>(
+            0,
+            (sum, selection) =>
+                sum +
+                selection.items.fold<int>(
+                  0,
+                  (itemSum, item) => itemSum + item.quantity,
+                ),
+          )
+        : legacyItems.fold<int>(0, (sum, item) => sum + item.quantity);
+
+    final computedTotal = selections.isNotEmpty
+        ? selections.fold<double>(
+            0,
+            (sum, selection) => sum + selection.total,
+          )
+        : legacyItems.fold<double>(0, (sum, item) => sum + item.total);
 
     return Material(
       color: Colors.transparent,

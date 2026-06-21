@@ -2,12 +2,38 @@ import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../models/orders/order.dart';
 
+class CreateOrderSelectionItemRequest {
+  CreateOrderSelectionItemRequest({
+    required this.productId,
+    required this.quantity,
+    required this.role,
+    required this.sortOrder,
+    this.notes,
+  });
+
+  final int productId;
+  final int quantity;
+  final int role;
+  final int sortOrder;
+  final String? notes;
+
+  Map<String, dynamic> toJson() => {
+    'productId': productId,
+    'quantity': quantity,
+    'role': role,
+    'notes': notes ?? '',
+    'sortOrder': sortOrder,
+  };
+}
+
 class OrderService {
   final _client = ApiClient.instance.dio;
 
   Future<Order?> getOpenOrderByTable(int tableId) async {
     try {
-      final response = await _client.get('${ApiConstants.orders}/table/$tableId');
+      final response = await _client.get(
+        '${ApiConstants.orders}/table/$tableId',
+      );
       return Order.fromJson(response.data as Map<String, dynamic>);
     } catch (error) {
       if (error is Exception) {
@@ -30,10 +56,27 @@ class OrderService {
     try {
       final response = await _client.post(
         '${ApiConstants.orders}/$orderId/items',
+        data: {'productId': productId, 'quantity': quantity, 'notes': notes},
+      );
+      return Order.fromJson(response.data as Map<String, dynamic>);
+    } catch (error) {
+      ApiClient.instance.parseError(error);
+    }
+  }
+
+  Future<Order> addSelection({
+    required int orderId,
+    required String label,
+    String? notes,
+    required List<CreateOrderSelectionItemRequest> items,
+  }) async {
+    try {
+      final response = await _client.post(
+        '${ApiConstants.orders}/$orderId/selections',
         data: {
-          'productId': productId,
-          'quantity': quantity,
-          'notes': notes,
+          'label': label,
+          'notes': notes ?? '',
+          'items': items.map((item) => item.toJson()).toList(),
         },
       );
       return Order.fromJson(response.data as Map<String, dynamic>);
