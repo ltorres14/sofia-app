@@ -10,11 +10,13 @@ class TableCard extends StatelessWidget {
     required this.table,
     required this.responsive,
     required this.onTap,
+    this.draftSelectionCount,
   });
 
   final RestaurantTable table;
   final AppResponsive responsive;
   final VoidCallback onTap;
+  final int? draftSelectionCount;
 
   @override
   Widget build(BuildContext context) {
@@ -30,11 +32,7 @@ class TableCard extends StatelessWidget {
         ? 'Con orden'
         : 'Libre';
 
-    final bottomIcon = table.waitingPayment
-        ? Icons.payments_rounded
-        : table.hasOrder
-        ? Icons.restaurant_menu_rounded
-        : Icons.event_seat_rounded;
+    final selectionCount = draftSelectionCount ?? table.activeOrdersCount;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -93,8 +91,8 @@ class TableCard extends StatelessWidget {
                             ),
                       ),
                       const SizedBox(height: 4),
-                      _OrdersSummary(
-                        count: table.activeOrdersCount,
+                      _SelectionsSummary(
+                        count: selectionCount,
                         color: const Color.fromARGB(255, 36, 24, 24),
                       ),
                     ],
@@ -139,8 +137,8 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-class _OrdersSummary extends StatelessWidget {
-  const _OrdersSummary({required this.count, required this.color});
+class _SelectionsSummary extends StatelessWidget {
+  const _SelectionsSummary({required this.count, required this.color});
 
   final int count;
   final Color color;
@@ -151,9 +149,9 @@ class _OrdersSummary extends StatelessWidget {
       builder: (context, constraints) {
         final shortText = '🍽️ $count';
         final fullText = switch (count) {
-          0 => '🍽️ Sin órdenes',
-          1 => '🍽️ 1 orden',
-          _ => '🍽️ $count órdenes',
+          0 => '🍽️ Sin selecciones',
+          1 => '🍽️ 1 selección',
+          _ => '🍽️ $count selecciones',
         };
 
         final compact = constraints.maxWidth < 110;

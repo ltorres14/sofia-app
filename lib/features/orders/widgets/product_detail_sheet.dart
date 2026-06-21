@@ -15,6 +15,10 @@ class ProductDetailSheet extends StatefulWidget {
     required this.extras,
     required this.onAdd,
     required this.isPrimaryProduct,
+    this.editMode = false,
+    this.initialQuantity,
+    this.initialComplementQuantities,
+    this.onSaveChanges,
   });
 
   final Product product;
@@ -27,6 +31,15 @@ class ProductDetailSheet extends StatefulWidget {
   )
   onAdd;
   final bool isPrimaryProduct;
+  final bool editMode;
+  final int? initialQuantity;
+  final Map<int, int>? initialComplementQuantities;
+  final Future<void> Function(
+    Product product,
+    int quantity,
+    List<ProductSelection> complements,
+  )?
+  onSaveChanges;
 
   @override
   State<ProductDetailSheet> createState() => _ProductDetailSheetState();
@@ -36,6 +49,15 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
   int _quantity = 1;
   bool _submitting = false;
   final Map<int, int> _complementQuantities = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _quantity = widget.initialQuantity ?? 1;
+    _complementQuantities.addAll(
+      widget.initialComplementQuantities ?? const {},
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -199,7 +221,13 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      child: Text(_submitting ? 'Agregando...' : 'Agregar'),
+                      child: Text(
+                        _submitting
+                            ? (widget.editMode
+                                  ? 'Guardando...'
+                                  : 'Agregando...')
+                            : (widget.editMode ? 'Guardar cambios' : 'Agregar'),
+                      ),
                     ),
                   ),
                 ],
@@ -257,7 +285,11 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
           ),
     ];
 
-    await widget.onAdd(widget.product, _quantity, selections);
+    if (widget.editMode && widget.onSaveChanges != null) {
+      await widget.onSaveChanges!(widget.product, _quantity, selections);
+    } else {
+      await widget.onAdd(widget.product, _quantity, selections);
+    }
 
     if (mounted) {
       Navigator.of(context).pop();

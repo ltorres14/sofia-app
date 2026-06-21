@@ -11,6 +11,7 @@ import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../viewmodels/tables_view_model.dart';
 import '../widgets/table_card.dart';
+import '../../orders/viewmodels/order_view_model.dart';
 
 class TablesView extends StatefulWidget {
   const TablesView({super.key});
@@ -160,10 +161,14 @@ class _TablesViewState extends State<TablesView> {
                               ),
                           itemBuilder: (context, index) {
                             final table = viewModel.tables[index];
-
+                            final draftSelectionCount =
+                                OrderViewModel.draftSelectionCountForTable(
+                                  table.id,
+                                );
                             return TableCard(
                               table: table,
                               responsive: responsive,
+                              draftSelectionCount: draftSelectionCount,
                               onTap: () async {
                                 try {
                                   await viewModel.ensureOrderForTable(table);

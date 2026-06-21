@@ -4,8 +4,6 @@ import 'package:provider/provider.dart';
 import '../../../core/responsive/app_responsive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
-import '../../../core/utils/responsive_helper.dart';
-import '../../../data/models/orders/order.dart';
 import '../../../data/models/products/product.dart';
 import '../../../data/models/tables/restaurant_table.dart';
 import '../../../shared/widgets/error_state.dart';
@@ -37,6 +35,7 @@ class _OrderViewState extends State<OrderView> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      showDragHandle: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -44,14 +43,27 @@ class _OrderViewState extends State<OrderView> {
       builder: (sheetContext) {
         final sheetResponsive = AppResponsive.of(sheetContext);
 
-        return FractionallySizedBox(
-          heightFactor: sheetResponsive.isPortrait ? 0.88 : 0.94,
-          child: CurrentOrderPanel(
-            order: viewModel.order,
-            tableName: widget.table.name,
-            sending: viewModel.isSending,
-            responsive: responsive,
-            onSendToKitchen: () => viewModel.sendToKitchen(widget.table),
+        return Consumer<OrderViewModel>(
+          builder: (context, liveViewModel, child) => FractionallySizedBox(
+            heightFactor: sheetResponsive.isPortrait ? 0.88 : 0.94,
+            child: CurrentOrderPanel(
+              order: liveViewModel.order,
+              visibleSelections: liveViewModel.visibleSelections,
+              visibleTotal: liveViewModel.visibleTotal,
+              visibleItemCount: liveViewModel.visibleItemCount,
+              tableName: widget.table.name,
+              sending: liveViewModel.isSending,
+              responsive: responsive,
+              onSendToKitchen: () => liveViewModel.sendToKitchen(widget.table),
+              onEditSelection: (selection) => _showEditSelectionDetail(
+                context,
+                liveViewModel,
+                selection.id,
+              ),
+              onDeleteSelection: (selection) =>
+                  liveViewModel.removeSelectionLocally(selection.id),
+              resolveProductById: liveViewModel.productById,
+            ),
           ),
         );
       },
@@ -98,6 +110,77 @@ class _OrderViewState extends State<OrderView> {
                 mainProduct: selectedProduct,
                 quantity: quantity,
                 table: widget.table,
+                complements: complements,
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showEditSelectionDetail(
+    BuildContext context,
+    OrderViewModel viewModel,
+    int selectionId,
+  ) async {
+    final selection = viewModel.selectionById(selectionId);
+    if (selection == null) return;
+
+    final mainItem = selection.items
+        .where((item) => item.role == 1)
+        .cast<dynamic>()
+        .firstWhere((_) => true, orElse: () => null);
+
+    if (mainItem == null) return;
+
+    final mainProduct = viewModel.productById(mainItem.productId);
+    if (mainProduct == null) return;
+
+    final isPrimaryProduct = viewModel.isPrimaryProduct(mainProduct);
+    final beverages = isPrimaryProduct
+        ? viewModel.beverageProducts
+              .where((candidate) => candidate.id != mainProduct.id)
+              .toList()
+        : const <Product>[];
+    final extras = isPrimaryProduct
+        ? viewModel.extraProducts
+              .where((candidate) => candidate.id != mainProduct.id)
+              .toList()
+        : const <Product>[];
+
+    final initialComplementQuantities = <int, int>{
+      for (final item in selection.items)
+        if (item.role != 1) item.productId: item.quantity,
+    };
+
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        final sheetResponsive = AppResponsive.of(sheetContext);
+
+        return FractionallySizedBox(
+          heightFactor: sheetResponsive.isPortrait ? 0.92 : 0.94,
+          child: ProductDetailSheet(
+            product: mainProduct,
+            beverages: beverages,
+            extras: extras,
+            isPrimaryProduct: isPrimaryProduct,
+            editMode: true,
+            initialQuantity: mainItem.quantity as int,
+            initialComplementQuantities: initialComplementQuantities,
+            onAdd: (product, quantity, complements) async {},
+            onSaveChanges: (selectedProduct, quantity, complements) async {
+              viewModel.replaceSelectionLocally(
+                selection: selection,
+                mainProduct: selectedProduct,
+                quantity: quantity,
                 complements: complements,
               );
             },
@@ -193,19 +276,16 @@ class _OrderViewState extends State<OrderView> {
     OrderViewModel viewModel,
     AppResponsive responsive,
   ) {
-    final helper = ResponsiveHelper(context);
-
     return SingleChildScrollView(
       padding: EdgeInsets.only(
-        bottom:
-            MediaQuery.viewPaddingOf(context).bottom +
-            helper.percentHeight(0.02),
+        bottom: MediaQuery.viewPaddingOf(context).bottom + responsive.spacingLg,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _OrderSummaryButton(
-            order: viewModel.order,
+            itemCount: viewModel.visibleItemCount,
+            total: viewModel.visibleTotal,
             onTap: () => _showOrderDetails(context, viewModel),
           ),
           SizedBox(height: responsive.spacingMd),
@@ -237,7 +317,8 @@ class _OrderViewState extends State<OrderView> {
           child: Column(
             children: [
               _OrderSummaryButton(
-                order: viewModel.order,
+                itemCount: viewModel.visibleItemCount,
+                total: viewModel.visibleTotal,
                 onTap: () => _showOrderDetails(context, viewModel),
                 compact: true,
               ),
@@ -505,39 +586,19 @@ class _CategoryProductsSheet extends StatelessWidget {
 
 class _OrderSummaryButton extends StatelessWidget {
   const _OrderSummaryButton({
-    required this.order,
+    required this.itemCount,
+    required this.total,
     required this.onTap,
     this.compact = false,
   });
 
-  final Order? order;
+  final int itemCount;
+  final double total;
   final VoidCallback onTap;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final selections = order?.selections ?? [];
-    final legacyItems = order?.items ?? [];
-
-    final itemCount = selections.isNotEmpty
-        ? selections.fold<int>(
-            0,
-            (sum, selection) =>
-                sum +
-                selection.items.fold<int>(
-                  0,
-                  (itemSum, item) => itemSum + item.quantity,
-                ),
-          )
-        : legacyItems.fold<int>(0, (sum, item) => sum + item.quantity);
-
-    final computedTotal = selections.isNotEmpty
-        ? selections.fold<double>(
-            0,
-            (sum, selection) => sum + selection.total,
-          )
-        : legacyItems.fold<double>(0, (sum, item) => sum + item.total);
-
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -581,7 +642,7 @@ class _OrderSummaryButton extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      CurrencyFormatter.format(computedTotal),
+                      CurrencyFormatter.format(total),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

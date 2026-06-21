@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/models/orders/order.dart';
+import '../../../data/models/orders/order_selection.dart';
+import '../../../data/models/orders/order_selection_item.dart';
 import '../../../data/models/products/product.dart';
 import '../../../data/models/tables/restaurant_table.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/order_repository.dart';
 import '../../../data/repositories/product_repository.dart';
 import '../../../data/repositories/table_repository.dart';
-import '../../../data/services/order_service.dart';
 import '../models/product_selection.dart';
 
 class OrderViewModel extends ChangeNotifier {
@@ -36,14 +37,18 @@ class OrderViewModel extends ChangeNotifier {
     mainCategory,
     'Tostadas',
     'Tostitos',
-    'CÃ³cteles',
+    'Cócteles',
     'Especialidades',
     drinksCategory,
     extrasCategory,
   ];
 
+  static final Map<int, List<OrderSelection>> _draftSelectionsByTable = {};
+
   List<Product> products = [];
   Order? order;
+  List<OrderSelection> _draftSelections = [];
+  int? _currentTableId;
 
   String selectedCategory = allCategory;
 
@@ -60,6 +65,100 @@ class OrderViewModel extends ChangeNotifier {
     drinksCategory,
     extrasCategory,
   ];
+
+  List<OrderSelection> get visibleSelections {
+    if (_draftSelections.isNotEmpty) {
+      return List<OrderSelection>.unmodifiable(_draftSelections);
+    }
+
+    return List<OrderSelection>.unmodifiable(order?.selections ?? const []);
+  }
+
+  double get visibleTotal {
+    if (visibleSelections.isNotEmpty) {
+      return visibleSelections.fold<double>(
+        0,
+        (sum, selection) => sum + selection.total,
+      );
+    }
+
+    return order?.items.fold<double>(0, (sum, item) => sum + item.total) ?? 0;
+  }
+
+  int get visibleItemCount {
+    if (visibleSelections.isNotEmpty) {
+      return visibleSelections.fold<int>(
+        0,
+        (sum, selection) =>
+            sum +
+            selection.items.fold<int>(
+              0,
+              (itemSum, item) => itemSum + item.quantity,
+            ),
+      );
+    }
+
+    return order?.items.fold<int>(0, (sum, item) => sum + item.quantity) ?? 0;
+  }
+
+  bool get hasPendingLocalSelectionChanges {
+    final persistedSelections = order?.selections ?? const <OrderSelection>[];
+
+    if (_draftSelections.length != persistedSelections.length) {
+      return _draftSelections.isNotEmpty || persistedSelections.isNotEmpty;
+    }
+
+    for (var index = 0; index < _draftSelections.length; index++) {
+      final draft = _draftSelections[index];
+      final persisted = persistedSelections[index];
+
+      if (draft.id != persisted.id ||
+          draft.sequenceNumber != persisted.sequenceNumber ||
+          draft.label != persisted.label ||
+          draft.notes != persisted.notes ||
+          draft.total != persisted.total ||
+          draft.items.length != persisted.items.length) {
+        return true;
+      }
+
+      for (var itemIndex = 0; itemIndex < draft.items.length; itemIndex++) {
+        final draftItem = draft.items[itemIndex];
+        final persistedItem = persisted.items[itemIndex];
+
+        if (draftItem.productId != persistedItem.productId ||
+            draftItem.quantity != persistedItem.quantity ||
+            draftItem.unitPrice != persistedItem.unitPrice ||
+            draftItem.total != persistedItem.total ||
+            draftItem.role != persistedItem.role ||
+            draftItem.sortOrder != persistedItem.sortOrder ||
+            draftItem.notes != persistedItem.notes) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  OrderSelection? selectionById(int selectionId) {
+    for (final selection in visibleSelections) {
+      if (selection.id == selectionId) {
+        return selection;
+      }
+    }
+
+    return null;
+  }
+
+  Product? productById(int productId) {
+    for (final product in products) {
+      if (product.id == productId) {
+        return product;
+      }
+    }
+
+    return null;
+  }
 
   List<String> get realProductCategories {
     final uniqueCategories = <String>{
@@ -145,6 +244,7 @@ class OrderViewModel extends ChangeNotifier {
   }
 
   Future<void> load(RestaurantTable table) async {
+    _currentTableId = table.id;
     isLoading = true;
     errorMessage = null;
     notifyListeners();
@@ -156,6 +256,7 @@ class OrderViewModel extends ChangeNotifier {
       showingCategories = true;
 
       order = await _orderRepository.getOpenOrderByTable(table.id);
+      _restoreDraftSelectionsForTable(table.id);
 
       if (order == null) {
         final userId = _authRepository.currentUser?.userId;
@@ -166,6 +267,7 @@ class OrderViewModel extends ChangeNotifier {
 
         await _tableRepository.openTable(table.id, userId);
         order = await _orderRepository.getOpenOrderByTable(table.id);
+        _restoreDraftSelectionsForTable(table.id);
       }
     } catch (error) {
       errorMessage = error.toString().replaceFirst('Exception: ', '');
@@ -206,6 +308,7 @@ class OrderViewModel extends ChangeNotifier {
       );
 
       order = await _orderRepository.getOpenOrderByTable(table.id);
+      _restoreDraftSelectionsForTable(table.id);
     } catch (error) {
       errorMessage = error.toString().replaceFirst('Exception: ', '');
     } finally {
@@ -222,46 +325,23 @@ class OrderViewModel extends ChangeNotifier {
   }) async {
     if (order == null) return;
 
+    _currentTableId = table.id;
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
     try {
-      final selectionItems = <CreateOrderSelectionItemRequest>[
-        CreateOrderSelectionItemRequest(
-          productId: mainProduct.id,
+      _draftSelections = [
+        ...visibleSelections,
+        _buildLocalSelection(
+          mainProduct: mainProduct,
           quantity: quantity,
-          role: 1,
-          sortOrder: 1,
-          notes: '',
+          complements: complements,
+          sequenceNumber: visibleSelections.length + 1,
         ),
       ];
 
-      var sortOrder = 2;
-
-      for (final complement in complements) {
-        if (complement.quantity <= 0) continue;
-
-        selectionItems.add(
-          CreateOrderSelectionItemRequest(
-            productId: complement.product.id,
-            quantity: complement.quantity,
-            role: _resolveSelectionRole(complement),
-            sortOrder: sortOrder,
-            notes: '',
-          ),
-        );
-        sortOrder++;
-      }
-
-      await _orderRepository.addSelection(
-        orderId: order!.id,
-        label: _buildNextSelectionLabel(),
-        notes: '',
-        items: selectionItems,
-      );
-
-      order = await _orderRepository.getOpenOrderByTable(table.id);
+      _saveCurrentDraft();
     } catch (error) {
       errorMessage = error.toString().replaceFirst('Exception: ', '');
     } finally {
@@ -270,8 +350,64 @@ class OrderViewModel extends ChangeNotifier {
     }
   }
 
+  void replaceSelectionLocally({
+    required OrderSelection selection,
+    required Product mainProduct,
+    required int quantity,
+    required List<ProductSelection> complements,
+  }) {
+    final currentSelections = visibleSelections;
+    if (currentSelections.isEmpty) return;
+
+    _draftSelections = currentSelections.map((currentSelection) {
+      if (currentSelection.id != selection.id) {
+        return currentSelection;
+      }
+
+      return _buildLocalSelection(
+        mainProduct: mainProduct,
+        quantity: quantity,
+        complements: complements,
+        sequenceNumber: currentSelection.sequenceNumber,
+        selectionId: currentSelection.id,
+        label: currentSelection.label,
+        notes: currentSelection.notes,
+        createdAt: currentSelection.createdAt,
+        status: currentSelection.status,
+      );
+    }).toList();
+
+    _saveCurrentDraft();
+    notifyListeners();
+  }
+
+  void removeSelectionLocally(int selectionId) {
+    final currentSelections = visibleSelections;
+    if (currentSelections.isEmpty) return;
+
+    final remainingSelections = currentSelections
+        .where((selection) => selection.id != selectionId)
+        .toList();
+
+    _draftSelections = [
+      for (var index = 0; index < remainingSelections.length; index++)
+        _copySelectionWithSequence(
+          remainingSelections[index],
+          sequenceNumber: index + 1,
+        ),
+    ];
+
+    _saveCurrentDraft();
+    notifyListeners();
+  }
+
   Future<void> sendToKitchen(RestaurantTable table) async {
     if (order == null) return;
+    if (hasPendingLocalSelectionChanges) {
+      errorMessage = 'Pendiente conectar envío final de selecciones';
+      notifyListeners();
+      return;
+    }
 
     isSending = true;
     errorMessage = null;
@@ -280,12 +416,76 @@ class OrderViewModel extends ChangeNotifier {
     try {
       await _orderRepository.sendToKitchen(order!.id);
       order = await _orderRepository.getOpenOrderByTable(table.id);
+      _syncDraftSelectionsFromOrder();
+      _draftSelectionsByTable.remove(table.id);
     } catch (error) {
       errorMessage = error.toString().replaceFirst('Exception: ', '');
     } finally {
       isSending = false;
       notifyListeners();
     }
+  }
+
+  OrderSelection _buildLocalSelection({
+    required Product mainProduct,
+    required int quantity,
+    required List<ProductSelection> complements,
+    required int sequenceNumber,
+    int? selectionId,
+    String? label,
+    String? notes,
+    DateTime? createdAt,
+    int? status,
+  }) {
+    final items = <OrderSelectionItem>[
+      OrderSelectionItem(
+        id: _buildLocalItemId(sequenceNumber, 1),
+        productId: mainProduct.id,
+        productName: mainProduct.name,
+        quantity: quantity,
+        unitPrice: mainProduct.price,
+        total: mainProduct.price * quantity,
+        role: 1,
+        sortOrder: 1,
+        notes: '',
+      ),
+    ];
+
+    var sortOrder = 2;
+
+    for (final complement in complements) {
+      if (complement.quantity <= 0) continue;
+
+      items.add(
+        OrderSelectionItem(
+          id: _buildLocalItemId(sequenceNumber, sortOrder),
+          productId: complement.product.id,
+          productName: complement.product.name,
+          quantity: complement.quantity,
+          unitPrice: complement.product.price,
+          total: complement.product.price * complement.quantity,
+          role: _resolveSelectionRole(complement),
+          sortOrder: sortOrder,
+          notes: '',
+        ),
+      );
+      sortOrder++;
+    }
+
+    final resolvedLabel = (label != null && label.trim().isNotEmpty)
+        ? label
+        : 'Seleccion $sequenceNumber';
+
+    return OrderSelection(
+      id: selectionId ?? _buildLocalSelectionId(sequenceNumber),
+      sequenceNumber: sequenceNumber,
+      label: resolvedLabel,
+      notes: notes,
+      status: status ?? 1,
+      createdAt: createdAt ?? DateTime.now(),
+      total: items.fold<double>(0, (sum, item) => sum + item.total),
+      items: items,
+    );
   }
 
   bool _productMatchesCategory(Product product, String category) {
@@ -354,13 +554,13 @@ class OrderViewModel extends ChangeNotifier {
     return value
         .toLowerCase()
         .trim()
-        .replaceAll('Ã¡', 'a')
-        .replaceAll('Ã©', 'e')
-        .replaceAll('Ã­', 'i')
-        .replaceAll('Ã³', 'o')
-        .replaceAll('Ãº', 'u')
-        .replaceAll('Ã¼', 'u')
-        .replaceAll('Ã±', 'n');
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ü', 'u')
+        .replaceAll('ñ', 'n');
   }
 
   int _resolveSelectionRole(ProductSelection selection) {
@@ -375,8 +575,52 @@ class OrderViewModel extends ChangeNotifier {
     return 3;
   }
 
-  String _buildNextSelectionLabel() {
-    final nextSequence = (order?.selections.length ?? 0) + 1;
-    return 'Seleccion $nextSequence';
+  void _syncDraftSelectionsFromOrder() {
+    _draftSelections = List<OrderSelection>.from(order?.selections ?? const []);
+  }
+
+  void _restoreDraftSelectionsForTable(int tableId) {
+    final savedDraftSelections = _draftSelectionsByTable[tableId];
+
+    if (savedDraftSelections != null) {
+      _draftSelections = List<OrderSelection>.from(savedDraftSelections);
+      return;
+    }
+
+    _syncDraftSelectionsFromOrder();
+  }
+
+  void _saveCurrentDraft() {
+    if (_currentTableId == null) return;
+
+    _draftSelectionsByTable[_currentTableId!] = List<OrderSelection>.from(
+      _draftSelections,
+    );
+  }
+
+  int _buildLocalSelectionId(int sequenceNumber) => -sequenceNumber;
+
+  int _buildLocalItemId(int sequenceNumber, int sortOrder) {
+    return -((sequenceNumber * 100) + sortOrder);
+  }
+
+  OrderSelection _copySelectionWithSequence(
+    OrderSelection selection, {
+    required int sequenceNumber,
+  }) {
+    return OrderSelection(
+      id: selection.id,
+      sequenceNumber: sequenceNumber,
+      label: 'Selección $sequenceNumber',
+      notes: selection.notes,
+      status: selection.status,
+      createdAt: selection.createdAt,
+      total: selection.total,
+      items: selection.items,
+    );
+  }
+
+  static int? draftSelectionCountForTable(int tableId) {
+    return _draftSelectionsByTable[tableId]?.length;
   }
 }
