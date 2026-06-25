@@ -9,6 +9,7 @@ import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/order_repository.dart';
 import '../../../data/repositories/product_repository.dart';
 import '../../../data/repositories/table_repository.dart';
+import '../../../data/services/order_service.dart';
 import '../models/product_selection.dart';
 
 class OrderViewModel extends ChangeNotifier {
@@ -401,12 +402,43 @@ class OrderViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> sendToKitchen(RestaurantTable table) async {
-    if (order == null) return;
-    if (hasPendingLocalSelectionChanges) {
+  Future<bool> sendToKitchen() async {
+    final hasPendingChanges = hasPendingLocalSelectionChanges;
+    final currentOrder = order;
+    final validSelections = visibleSelections
+        .where((selection) => selection.items.any((item) => item.quantity > 0))
+        .toList();
+    debugPrint('ViewModel: sendToKitchen called');
+    debugPrint('ViewModel: isSending=$isSending');
+    debugPrint('ViewModel: orderId=${order?.id}');
+    debugPrint('ViewModel: draftSelections=${_draftSelections.length}');
+    debugPrint('ViewModel: visibleSelections=${visibleSelections.length}');
+    debugPrint('ViewModel: hasPendingChanges=$hasPendingChanges');
+    if (currentOrder == null) {
+      debugPrint(
+        'ViewModel: sendToKitchen returning false because order is null',
+      );
+      return false;
+    }
+    if (currentOrder.id <= 0) {
+      debugPrint(
+        'ViewModel: sendToKitchen returning false because orderId is invalid',
+      );
+      return false;
+    }
+    if (isSending) {
+      debugPrint(
+        'ViewModel: sendToKitchen returning false because isSending is already true',
+      );
+      return false;
+    }
+    if (validSelections.isEmpty && currentOrder.items.isEmpty) {
+      debugPrint(
+        'ViewModel: sendToKitchen returning false because there are no valid selections or items to send',
+      );
       errorMessage = 'Pendiente conectar envío final de selecciones';
       notifyListeners();
-      return;
+      return false;
     }
 
     isSending = true;
@@ -414,14 +446,72 @@ class OrderViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
+      if (hasPendingChanges && validSelections.isNotEmpty) {
+        debugPrint(
+          'ViewModel: persisting pending selections before sendToKitchen',
+        );
+        await _persistDraftSelectionsForSend(validSelections);
+        debugPrint('ViewModel: pending selections persisted');
+      }
+
+      debugPrint('ViewModel: posting sendToKitchen');
       await _orderRepository.sendToKitchen(order!.id);
+      debugPrint('ViewModel: post completed');
+      return true;
+    } catch (e) {
+      debugPrint('ViewModel: sendToKitchen error: $e');
+      final error = e;
+      errorMessage = error.toString().replaceFirst('Exception: ', '');
+      return false;
+    } finally {
+      isSending = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _persistDraftSelectionsForSend(
+    List<OrderSelection> selections,
+  ) async {
+    var latestOrder = order;
+
+    for (final selection in selections) {
+      final items = selection.items
+          .where((item) => item.quantity > 0)
+          .map(
+            (item) => CreateOrderSelectionItemRequest(
+              productId: item.productId,
+              quantity: item.quantity,
+              role: item.role,
+              sortOrder: item.sortOrder,
+              notes: item.notes,
+            ),
+          )
+          .toList();
+
+      if (items.isEmpty) {
+        continue;
+      }
+
+      latestOrder = await _orderRepository.addSelection(
+        orderId: latestOrder!.id,
+        label: selection.label,
+        notes: selection.notes,
+        items: items,
+      );
+    }
+
+    order = latestOrder;
+    _syncDraftSelectionsFromOrder();
+  }
+
+  Future<void> refreshAfterSendToKitchen(RestaurantTable table) async {
+    try {
       order = await _orderRepository.getOpenOrderByTable(table.id);
       _syncDraftSelectionsFromOrder();
       _draftSelectionsByTable.remove(table.id);
     } catch (error) {
       errorMessage = error.toString().replaceFirst('Exception: ', '');
     } finally {
-      isSending = false;
       notifyListeners();
     }
   }

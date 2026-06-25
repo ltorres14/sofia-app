@@ -29,8 +29,6 @@ class _OrderViewState extends State<OrderView> {
     BuildContext context,
     OrderViewModel viewModel,
   ) async {
-    final responsive = AppResponsive.of(context);
-
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -43,27 +41,56 @@ class _OrderViewState extends State<OrderView> {
       builder: (sheetContext) {
         final sheetResponsive = AppResponsive.of(sheetContext);
 
-        return Consumer<OrderViewModel>(
-          builder: (context, liveViewModel, child) => FractionallySizedBox(
-            heightFactor: sheetResponsive.isPortrait ? 0.88 : 0.94,
-            child: CurrentOrderPanel(
-              order: liveViewModel.order,
-              visibleSelections: liveViewModel.visibleSelections,
-              visibleTotal: liveViewModel.visibleTotal,
-              visibleItemCount: liveViewModel.visibleItemCount,
-              tableName: widget.table.name,
-              sending: liveViewModel.isSending,
-              responsive: responsive,
-              onSendToKitchen: () => liveViewModel.sendToKitchen(widget.table),
-              onEditSelection: (selection) => _showEditSelectionDetail(
-                context,
-                liveViewModel,
-                selection.id,
-              ),
-              onDeleteSelection: (selection) =>
-                  liveViewModel.removeSelectionLocally(selection.id),
-              resolveProductById: liveViewModel.productById,
-            ),
+        return Builder(
+          builder: (panelContext) => Consumer<OrderViewModel>(
+            builder: (consumerContext, liveViewModel, child) {
+              final selections = liveViewModel.visibleSelections;
+              debugPrint(
+                'CurrentOrderPanel build: '
+                'orderIsNull=${liveViewModel.order == null}, '
+                'selectionsLength=${selections.length}, '
+                'itemsPerSelection=${selections.map((selection) => selection.items.length).join(",")}',
+              );
+
+              return FractionallySizedBox(
+                heightFactor: sheetResponsive.isPortrait ? 0.88 : 0.94,
+                child: CurrentOrderPanel(
+                  order: liveViewModel.order,
+                  visibleSelections: selections,
+                  visibleTotal: liveViewModel.visibleTotal,
+                  visibleItemCount: liveViewModel.visibleItemCount,
+                  tableName: widget.table.name,
+                  sending: liveViewModel.isSending,
+                  onSendToKitchen: () async {
+                    debugPrint('OrderView: onSendToKitchen callback started');
+                    final success = await liveViewModel.sendToKitchen();
+                    debugPrint('OrderView: sendToKitchen success=$success');
+                    if (!sheetContext.mounted) {
+                      debugPrint('OrderView: sheetContext not mounted');
+                      return;
+                    }
+                    if (!success) {
+                      debugPrint('OrderView: send failed, keeping sheet open');
+                      return;
+                    }
+
+                    debugPrint('OrderView: closing sheet');
+                    Navigator.of(sheetContext).pop();
+                    debugPrint('OrderView: refreshing after send');
+                    await liveViewModel.refreshAfterSendToKitchen(widget.table);
+                    debugPrint('OrderView: refresh completed');
+                  },
+                  onEditSelection: (selection) => _showEditSelectionDetail(
+                    panelContext,
+                    liveViewModel,
+                    selection.id,
+                  ),
+                  onDeleteSelection: (selection) =>
+                      liveViewModel.removeSelectionLocally(selection.id),
+                  resolveProductById: liveViewModel.productById,
+                ),
+              );
+            },
           ),
         );
       },

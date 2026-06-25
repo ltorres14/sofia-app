@@ -9,7 +9,7 @@ import '../../../data/models/products/product.dart';
 import '../../../shared/widgets/safe_app_image.dart';
 import 'order_item_row.dart';
 
-class CurrentOrderPanel extends StatelessWidget {
+class CurrentOrderPanel extends StatefulWidget {
   const CurrentOrderPanel({
     super.key,
     required this.order,
@@ -22,7 +22,6 @@ class CurrentOrderPanel extends StatelessWidget {
     required this.onDeleteSelection,
     required this.resolveProductById,
     required this.sending,
-    required this.responsive,
   });
 
   final Order? order;
@@ -35,19 +34,55 @@ class CurrentOrderPanel extends StatelessWidget {
   final void Function(OrderSelection selection) onDeleteSelection;
   final Product? Function(int productId) resolveProductById;
   final bool sending;
-  final AppResponsive responsive;
+
+  @override
+  State<CurrentOrderPanel> createState() => _CurrentOrderPanelState();
+}
+
+class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
+  bool _isSending = false;
+
+  Future<void> _handleSendToKitchen() async {
+    if (_isSending || widget.sending) return;
+    debugPrint('CurrentOrderPanel: send button tapped');
+
+    setState(() {
+      _isSending = true;
+    });
+    debugPrint('CurrentOrderPanel: isSending=true');
+
+    try {
+      await widget.onSendToKitchen();
+      debugPrint('CurrentOrderPanel: onSendToKitchen completed');
+    } catch (e) {
+      debugPrint('CurrentOrderPanel: onSendToKitchen error: $e');
+      if (!mounted) return;
+      setState(() {
+        _isSending = false;
+      });
+      rethrow;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isSending = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final selections = visibleSelections;
+    final responsive = AppResponsive.of(context);
+    final selections = widget.visibleSelections;
     final hasSelections = selections.isNotEmpty;
+    final order = widget.order;
+    final isSending = widget.sending || _isSending;
     final legacyItems = order?.items ?? const [];
     final itemCount = hasSelections
         ? selections.length
         : legacyItems.fold<int>(0, (sum, item) => sum + item.quantity);
     final computedTotal = hasSelections
-        ? visibleTotal
+        ? widget.visibleTotal
         : (order?.total ??
               legacyItems.fold<double>(0, (sum, item) => sum + item.total));
 
@@ -107,7 +142,7 @@ class CurrentOrderPanel extends StatelessWidget {
                         ),
                         SizedBox(height: responsive.spacingXs / 2),
                         Text(
-                          tableName,
+                          widget.tableName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: textTheme.bodySmall?.copyWith(
@@ -183,12 +218,12 @@ class CurrentOrderPanel extends StatelessWidget {
                         itemBuilder: (context, index) => _SelectionCard(
                           selection: selections[index],
                           responsive: responsive,
-                          onEdit: () => onEditSelection(selections[index]),
+                          onEdit: () => widget.onEditSelection(selections[index]),
                           onDelete: () => _confirmDeleteSelection(
                             context,
                             selections[index],
                           ),
-                          resolveProductById: resolveProductById,
+                          resolveProductById: widget.resolveProductById,
                         ),
                       )
                     : ListView.separated(
@@ -256,7 +291,7 @@ class CurrentOrderPanel extends StatelessWidget {
                     height: responsive.orderActionButtonHeight,
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: sending ? null : () => onSendToKitchen(),
+                      onPressed: isSending ? null : _handleSendToKitchen,
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: AppColors.white,
@@ -275,7 +310,25 @@ class CurrentOrderPanel extends StatelessWidget {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      child: const Text('Enviar a Cocina'),
+                      child: isSending
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    valueColor: const AlwaysStoppedAnimation(
+                                      AppColors.white,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: responsive.spacingSm),
+                                const Text('Enviando...'),
+                              ],
+                            )
+                          : const Text('Enviar a Cocina'),
                     ),
                   ),
                 ],
@@ -291,6 +344,7 @@ class CurrentOrderPanel extends StatelessWidget {
     BuildContext context,
     OrderSelection selection,
   ) async {
+    final responsive = AppResponsive.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -343,7 +397,7 @@ class CurrentOrderPanel extends StatelessWidget {
     );
 
     if (confirmed == true) {
-      onDeleteSelection(selection);
+      widget.onDeleteSelection(selection);
     }
   }
 }
@@ -366,6 +420,7 @@ class _SelectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final notes = selection.notes?.trim() ?? '';
 
     return Material(
       color: Colors.transparent,
@@ -433,10 +488,10 @@ class _SelectionCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if ((selection.notes ?? '').trim().isNotEmpty) ...[
+              if (notes.isNotEmpty) ...[
                 SizedBox(height: responsive.spacingXs),
                 Text(
-                  selection.notes!.trim(),
+                  notes,
                   style: textTheme.bodySmall?.copyWith(
                     fontSize: responsive.captionFontSize,
                     color: AppColors.textSecondary,
@@ -454,14 +509,26 @@ class _SelectionCard extends StatelessWidget {
   }
 
   List<Widget> _buildItems(BuildContext context) {
-    final sortedItems = List.of(selection.items)
+    if (selection.items.isEmpty) {
+      return const [];
+    }
+
+    final sortedItems = selection.items
+        .where((item) => item.quantity > 0)
+        .toList()
       ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
+
+    if (sortedItems.isEmpty) {
+      return const [];
+    }
 
     return [
       for (var index = 0; index < sortedItems.length; index++) ...[
         _SelectionItemRow(
           product: resolveProductById(sortedItems[index].productId),
-          productName: sortedItems[index].productName,
+          productName: sortedItems[index].productName.trim().isEmpty
+              ? 'Producto no disponible'
+              : sortedItems[index].productName,
           quantity: sortedItems[index].quantity,
           unitPrice: sortedItems[index].unitPrice,
           total: sortedItems[index].total,
