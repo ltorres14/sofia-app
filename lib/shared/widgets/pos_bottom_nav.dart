@@ -45,7 +45,7 @@ class PosBottomNav extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.08),
+              color: AppColors.primary.withValues(alpha: 0.08),
               blurRadius: 18,
               offset: const Offset(0, -4),
             ),
@@ -91,7 +91,7 @@ class _NavItemButton extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       child: Material(
         color: isActive
-            ? AppColors.primary.withOpacity(0.08)
+            ? AppColors.primary.withValues(alpha: 0.08)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(20),
         child: InkWell(

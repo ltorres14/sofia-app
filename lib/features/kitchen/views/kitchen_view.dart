@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/responsive/app_responsive.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_overlay.dart';
@@ -39,21 +40,62 @@ class _KitchenViewState extends State<KitchenView> {
                       message: 'No hay comandas pendientes en este momento.',
                       icon: Icons.check_circle_outline_rounded,
                     )
-                  : GridView.builder(
-                      padding: const EdgeInsets.only(bottom: 96),
-                      itemCount: viewModel.tickets.length,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 1.15,
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final responsive = AppResponsive.of(
+                          context,
+                          layoutSize: Size(
+                            constraints.maxWidth,
+                            constraints.maxHeight,
                           ),
-                      itemBuilder: (context, index) {
-                        final ticket = viewModel.tickets[index];
-                        return KitchenTicketCard(
-                          ticket: ticket,
-                          onAdvanceStatus: () => viewModel.advanceStatus(ticket),
+                        );
+
+                        if (responsive.isPortrait || constraints.maxWidth < 900) {
+                          return ListView.separated(
+                            padding: EdgeInsets.fromLTRB(
+                              responsive.spacingMd,
+                              responsive.spacingMd,
+                              responsive.spacingMd,
+                              responsive.spacingXl + 60,
+                            ),
+                            itemCount: viewModel.tickets.length,
+                            separatorBuilder: (_, _) =>
+                                SizedBox(height: responsive.spacingMd),
+                            itemBuilder: (context, index) {
+                              final ticket = viewModel.tickets[index];
+                              return KitchenTicketCard(
+                                ticket: ticket,
+                                onAdvanceStatus: () =>
+                                    viewModel.advanceStatus(ticket),
+                              );
+                            },
+                          );
+                        }
+
+                        return GridView.builder(
+                          padding: EdgeInsets.fromLTRB(
+                            responsive.spacingMd,
+                            responsive.spacingMd,
+                            responsive.spacingMd,
+                            responsive.spacingXl + 60,
+                          ),
+                          itemCount: viewModel.tickets.length,
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount:
+                                    constraints.maxWidth >= 1400 ? 3 : 2,
+                                crossAxisSpacing: responsive.spacingMd,
+                                mainAxisSpacing: responsive.spacingMd,
+                                mainAxisExtent: 440,
+                              ),
+                          itemBuilder: (context, index) {
+                            final ticket = viewModel.tickets[index];
+                            return KitchenTicketCard(
+                              ticket: ticket,
+                              onAdvanceStatus: () =>
+                                  viewModel.advanceStatus(ticket),
+                            );
+                          },
                         );
                       },
                     ),

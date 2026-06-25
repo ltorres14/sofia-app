@@ -189,7 +189,7 @@ class _MoreActionTile extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   color: destructive
-                      ? AppColors.danger.withOpacity(0.08)
+                      ? AppColors.danger.withValues(alpha: 0.08)
                       : AppColors.secondary,
                   borderRadius: BorderRadius.circular(14),
                 ),

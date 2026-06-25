@@ -45,12 +45,6 @@ class _OrderViewState extends State<OrderView> {
           builder: (panelContext) => Consumer<OrderViewModel>(
             builder: (consumerContext, liveViewModel, child) {
               final selections = liveViewModel.visibleSelections;
-              debugPrint(
-                'CurrentOrderPanel build: '
-                'orderIsNull=${liveViewModel.order == null}, '
-                'selectionsLength=${selections.length}, '
-                'itemsPerSelection=${selections.map((selection) => selection.items.length).join(",")}',
-              );
 
               return FractionallySizedBox(
                 heightFactor: sheetResponsive.isPortrait ? 0.88 : 0.94,
@@ -62,23 +56,10 @@ class _OrderViewState extends State<OrderView> {
                   tableName: widget.table.name,
                   sending: liveViewModel.isSending,
                   onSendToKitchen: () async {
-                    debugPrint('OrderView: onSendToKitchen callback started');
                     final success = await liveViewModel.sendToKitchen();
-                    debugPrint('OrderView: sendToKitchen success=$success');
-                    if (!sheetContext.mounted) {
-                      debugPrint('OrderView: sheetContext not mounted');
-                      return;
-                    }
-                    if (!success) {
-                      debugPrint('OrderView: send failed, keeping sheet open');
-                      return;
-                    }
-
-                    debugPrint('OrderView: closing sheet');
+                    if (!sheetContext.mounted || !success) return;
                     Navigator.of(sheetContext).pop();
-                    debugPrint('OrderView: refreshing after send');
                     await liveViewModel.refreshAfterSendToKitchen(widget.table);
-                    debugPrint('OrderView: refresh completed');
                   },
                   onEditSelection: (selection) => _showEditSelectionDetail(
                     panelContext,

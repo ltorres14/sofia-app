@@ -202,7 +202,7 @@ class _BusinessLogo extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.10),
+            color: AppColors.primary.withValues(alpha: 0.10),
             blurRadius: 26,
             offset: const Offset(0, 12),
           ),
@@ -264,7 +264,7 @@ class _PinCard extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.08),
+              color: AppColors.primary.withValues(alpha: 0.08),
               blurRadius: 30,
               offset: const Offset(0, 16),
             ),
@@ -382,7 +382,7 @@ class _PinDotsIndicator extends StatelessWidget {
             border: Border.all(
               color: isFilled
                   ? AppColors.primary
-                  : AppColors.primary.withOpacity(0.22),
+                  : AppColors.primary.withValues(alpha: 0.22),
               width: 2.5,
             ),
           ),
@@ -432,7 +432,7 @@ class _AuthorizedInfoBox extends StatelessWidget {
         color: AppColors.secondary,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.primary.withOpacity(0.06),
+          color: AppColors.primary.withValues(alpha: 0.06),
         ),
       ),
       child: Row(

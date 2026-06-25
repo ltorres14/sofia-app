@@ -44,18 +44,14 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
 
   Future<void> _handleSendToKitchen() async {
     if (_isSending || widget.sending) return;
-    debugPrint('CurrentOrderPanel: send button tapped');
 
     setState(() {
       _isSending = true;
     });
-    debugPrint('CurrentOrderPanel: isSending=true');
 
     try {
       await widget.onSendToKitchen();
-      debugPrint('CurrentOrderPanel: onSendToKitchen completed');
-    } catch (e) {
-      debugPrint('CurrentOrderPanel: onSendToKitchen error: $e');
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _isSending = false;

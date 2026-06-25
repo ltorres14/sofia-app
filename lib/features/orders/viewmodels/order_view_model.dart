@@ -408,35 +408,11 @@ class OrderViewModel extends ChangeNotifier {
     final validSelections = visibleSelections
         .where((selection) => selection.items.any((item) => item.quantity > 0))
         .toList();
-    debugPrint('ViewModel: sendToKitchen called');
-    debugPrint('ViewModel: isSending=$isSending');
-    debugPrint('ViewModel: orderId=${order?.id}');
-    debugPrint('ViewModel: draftSelections=${_draftSelections.length}');
-    debugPrint('ViewModel: visibleSelections=${visibleSelections.length}');
-    debugPrint('ViewModel: hasPendingChanges=$hasPendingChanges');
-    if (currentOrder == null) {
-      debugPrint(
-        'ViewModel: sendToKitchen returning false because order is null',
-      );
-      return false;
-    }
-    if (currentOrder.id <= 0) {
-      debugPrint(
-        'ViewModel: sendToKitchen returning false because orderId is invalid',
-      );
-      return false;
-    }
-    if (isSending) {
-      debugPrint(
-        'ViewModel: sendToKitchen returning false because isSending is already true',
-      );
-      return false;
-    }
+    if (currentOrder == null) return false;
+    if (currentOrder.id <= 0) return false;
+    if (isSending) return false;
     if (validSelections.isEmpty && currentOrder.items.isEmpty) {
-      debugPrint(
-        'ViewModel: sendToKitchen returning false because there are no valid selections or items to send',
-      );
-      errorMessage = 'Pendiente conectar envío final de selecciones';
+      errorMessage = 'No hay productos para enviar a cocina';
       notifyListeners();
       return false;
     }
@@ -447,20 +423,12 @@ class OrderViewModel extends ChangeNotifier {
 
     try {
       if (hasPendingChanges && validSelections.isNotEmpty) {
-        debugPrint(
-          'ViewModel: persisting pending selections before sendToKitchen',
-        );
         await _persistDraftSelectionsForSend(validSelections);
-        debugPrint('ViewModel: pending selections persisted');
       }
 
-      debugPrint('ViewModel: posting sendToKitchen');
       await _orderRepository.sendToKitchen(order!.id);
-      debugPrint('ViewModel: post completed');
       return true;
-    } catch (e) {
-      debugPrint('ViewModel: sendToKitchen error: $e');
-      final error = e;
+    } catch (error) {
       errorMessage = error.toString().replaceFirst('Exception: ', '');
       return false;
     } finally {
@@ -714,3 +682,4 @@ class OrderViewModel extends ChangeNotifier {
     return _draftSelectionsByTable[tableId]?.length;
   }
 }
+

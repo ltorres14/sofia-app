@@ -8,7 +8,8 @@ class KitchenService {
   Future<List<KitchenTicket>> getTickets() async {
     try {
       final response = await _client.get(ApiConstants.kitchenTickets);
-      return (response.data as List<dynamic>)
+      final data = response.data as List<dynamic>;
+      return data
           .map((item) => KitchenTicket.fromJson(item as Map<String, dynamic>))
           .toList();
     } catch (error) {
