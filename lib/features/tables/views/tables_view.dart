@@ -170,10 +170,25 @@ class _TablesViewState extends State<TablesView> {
                               responsive: responsive,
                               draftSelectionCount: draftSelectionCount,
                               onTap: () async {
+                                final role = authRepository.currentUser?.role;
+                                final canOpenPayments = RouteAccess.canAccess(
+                                  role: role,
+                                  routeName: RouteNames.payments,
+                                );
+
+                                if (table.waitingPayment &&
+                                    canOpenPayments &&
+                                    context.mounted) {
+                                  Navigator.pushNamed(
+                                    context,
+                                    RouteNames.payments,
+                                    arguments: table.id,
+                                  );
+                                  return;
+                                }
+
                                 try {
                                   await viewModel.ensureOrderForTable(table);
-
-                                  final role = authRepository.currentUser?.role;
 
                                   if (context.mounted &&
                                       RouteAccess.canAccess(

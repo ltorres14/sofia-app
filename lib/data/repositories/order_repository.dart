@@ -39,4 +39,6 @@ class OrderRepository {
   }
 
   Future<void> sendToKitchen(int orderId) => _service.sendToKitchen(orderId);
+
+  Future<void> requestBill(int orderId) => _service.requestBill(orderId);
 }

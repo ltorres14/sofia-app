@@ -2,10 +2,7 @@ import '../constants/role_constants.dart';
 import 'route_names.dart';
 
 class RouteAccess {
-  static bool canAccess({
-    required String? role,
-    required String routeName,
-  }) {
+  static bool canAccess({required String? role, required String routeName}) {
     if (routeName == RouteNames.login) {
       return true;
     }
@@ -22,6 +19,7 @@ class RouteAccess {
         return role == RoleConstants.kitchen || role == RoleConstants.cashier;
       case RouteNames.payments:
       case RouteNames.cashCut:
+      case RouteNames.todaySales:
         return role == RoleConstants.cashier;
       default:
         return false;

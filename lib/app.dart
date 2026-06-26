@@ -12,6 +12,7 @@ import 'data/repositories/product_repository.dart';
 import 'data/repositories/table_repository.dart';
 import 'features/auth/viewmodels/pin_login_view_model.dart';
 import 'features/cash_cut/viewmodels/cash_cut_view_model.dart';
+import 'features/cash_cut/viewmodels/today_sales_view_model.dart';
 import 'features/kitchen/viewmodels/kitchen_view_model.dart';
 import 'features/orders/viewmodels/order_view_model.dart';
 import 'features/payments/viewmodels/payment_view_model.dart';
@@ -32,9 +33,8 @@ class SofiaApp extends StatelessWidget {
         Provider(create: (_) => PaymentRepository()),
         Provider(create: (_) => CashCutRepository()),
         ChangeNotifierProvider(
-          create: (context) => PinLoginViewModel(
-            authRepository: context.read<AuthRepository>(),
-          ),
+          create: (context) =>
+              PinLoginViewModel(authRepository: context.read<AuthRepository>()),
         ),
         ChangeNotifierProvider(
           create: (context) => TablesViewModel(
@@ -60,12 +60,16 @@ class SofiaApp extends StatelessWidget {
           create: (context) => PaymentViewModel(
             paymentRepository: context.read<PaymentRepository>(),
             cashCutRepository: context.read<CashCutRepository>(),
-            orderRepository: context.read<OrderRepository>(),
             authRepository: context.read<AuthRepository>(),
           ),
         ),
         ChangeNotifierProvider(
           create: (context) => CashCutViewModel(
+            cashCutRepository: context.read<CashCutRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => TodaySalesViewModel(
             cashCutRepository: context.read<CashCutRepository>(),
           ),
         ),

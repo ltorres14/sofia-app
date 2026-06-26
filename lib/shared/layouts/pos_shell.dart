@@ -69,7 +69,8 @@ class PosShell extends StatelessWidget {
                       ),
                       SizedBox(height: responsive.sectionGap),
                       Expanded(child: child),
-                      if (!responsive.isPortrait || responsive.screenWidth >= 600)
+                      if (!responsive.isPortrait ||
+                          responsive.screenWidth >= 600)
                         Padding(
                           padding: EdgeInsets.only(top: responsive.spacingSm),
                           child: Text(
@@ -141,6 +142,39 @@ class PosShell extends StatelessWidget {
           return MoreBottomSheet(
             userName: user?.name ?? 'Usuario',
             roleName: user?.role ?? 'Sin rol',
+            onPayments:
+                RouteAccess.canAccess(
+                  role: user?.role,
+                  routeName: RouteNames.payments,
+                )
+                ? () => _navigateFromMoreSheet(
+                    context,
+                    sheetContext,
+                    RouteNames.payments,
+                  )
+                : null,
+            onCashCut:
+                RouteAccess.canAccess(
+                  role: user?.role,
+                  routeName: RouteNames.cashCut,
+                )
+                ? () => _navigateFromMoreSheet(
+                    context,
+                    sheetContext,
+                    RouteNames.cashCut,
+                  )
+                : null,
+            onTodaySales:
+                RouteAccess.canAccess(
+                  role: user?.role,
+                  routeName: RouteNames.todaySales,
+                )
+                ? () => _navigateFromMoreSheet(
+                    context,
+                    sheetContext,
+                    RouteNames.todaySales,
+                  )
+                : null,
             onProfile: () => Navigator.of(sheetContext).pop(),
             onSync: () => Navigator.of(sheetContext).pop(),
             onSettings: () => Navigator.of(sheetContext).pop(),
@@ -149,10 +183,9 @@ class PosShell extends StatelessWidget {
               Navigator.of(sheetContext).pop();
               await authRepository.logout();
               if (context.mounted) {
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                  RouteNames.login,
-                  (route) => false,
-                );
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil(RouteNames.login, (route) => false);
               }
             },
           );
@@ -168,6 +201,19 @@ class PosShell extends StatelessWidget {
 
     final role = authRepository.currentUser?.role;
     if (!RouteAccess.canAccess(role: role, routeName: routeName)) {
+      return;
+    }
+
+    Navigator.of(context).pushReplacementNamed(routeName);
+  }
+
+  void _navigateFromMoreSheet(
+    BuildContext context,
+    BuildContext sheetContext,
+    String routeName,
+  ) {
+    Navigator.of(sheetContext).pop();
+    if (routeName == currentRoute) {
       return;
     }
 

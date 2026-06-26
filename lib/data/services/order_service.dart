@@ -92,4 +92,12 @@ class OrderService {
       ApiClient.instance.parseError(error);
     }
   }
+
+  Future<void> requestBill(int orderId) async {
+    try {
+      await _client.post('${ApiConstants.orders}/$orderId/request-bill');
+    } catch (error) {
+      ApiClient.instance.parseError(error);
+    }
+  }
 }

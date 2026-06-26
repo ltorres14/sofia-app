@@ -22,6 +22,10 @@ class Order {
   final List<OrderItem> items;
   final List<OrderSelection> selections;
 
+  bool get isEmpty => total <= 0 || (items.isEmpty && selections.isEmpty);
+
+  bool get isPayable => !isEmpty;
+
   factory Order.fromJson(Map<String, dynamic> json) => Order(
     id: json['id'] as int,
     tableId: json['tableId'] as int,

@@ -7,6 +7,9 @@ class MoreBottomSheet extends StatelessWidget {
     super.key,
     required this.userName,
     required this.roleName,
+    this.onPayments,
+    this.onCashCut,
+    this.onTodaySales,
     this.onProfile,
     this.onSync,
     this.onSettings,
@@ -16,6 +19,9 @@ class MoreBottomSheet extends StatelessWidget {
 
   final String userName;
   final String roleName;
+  final VoidCallback? onPayments;
+  final VoidCallback? onCashCut;
+  final VoidCallback? onTodaySales;
   final VoidCallback? onProfile;
   final VoidCallback? onSync;
   final VoidCallback? onSettings;
@@ -34,9 +40,7 @@ class MoreBottomSheet extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: AppColors.white,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(28),
-          ),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -68,9 +72,9 @@ class MoreBottomSheet extends StatelessWidget {
                     child: Text(
                       initial,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -82,22 +86,22 @@ class MoreBottomSheet extends StatelessWidget {
                           trimmedName.isEmpty ? 'Usuario' : trimmedName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.w800,
-                                  ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w800,
+                              ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           roleName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                       ],
                     ),
@@ -113,6 +117,24 @@ class MoreBottomSheet extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
+                    if (onPayments != null)
+                      _MoreActionTile(
+                        icon: Icons.point_of_sale_rounded,
+                        label: 'Caja',
+                        onTap: onPayments,
+                      ),
+                    if (onCashCut != null)
+                      _MoreActionTile(
+                        icon: Icons.assessment_rounded,
+                        label: 'Corte del dia',
+                        onTap: onCashCut,
+                      ),
+                    if (onTodaySales != null)
+                      _MoreActionTile(
+                        icon: Icons.receipt_long_rounded,
+                        label: 'Ventas del dia',
+                        onTap: onTodaySales,
+                      ),
                     _MoreActionTile(
                       icon: Icons.person_rounded,
                       label: 'Perfil',
@@ -204,15 +226,12 @@ class _MoreActionTile extends StatelessWidget {
                 child: Text(
                   label,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.textSecondary,
-              ),
+              Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
             ],
           ),
         ),

@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../data/models/tables/restaurant_table.dart';
+import '../../data/repositories/auth_repository.dart';
 import '../../features/auth/views/pin_login_view.dart';
 import '../../features/cash_cut/views/cash_cut_view.dart';
+import '../../features/cash_cut/views/today_sales_view.dart';
 import '../../features/kitchen/views/kitchen_view.dart';
 import '../../features/orders/views/order_view.dart';
 import '../../features/payments/views/payment_view.dart';
+import '../../features/tables/viewmodels/tables_view_model.dart';
 import '../../features/tables/views/tables_view.dart';
 import '../../shared/layouts/pos_shell.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../features/tables/viewmodels/tables_view_model.dart';
 import '../../shared/widgets/loading_overlay.dart';
-
-import 'package:provider/provider.dart';
+import '../theme/app_colors.dart';
 import 'protected_route_page.dart';
+import 'route_access.dart';
 import 'route_names.dart';
 
 class AppRouter {
@@ -45,29 +47,65 @@ class AppRouter {
         );
       case RouteNames.order:
         return MaterialPageRoute(
-          builder: (context) => ProtectedRoutePage(
-            routeName: RouteNames.order,
-            child: PosShell(
-              title: 'SOFIA Check',
-              subtitle: 'Toma de orden',
-              currentRoute: RouteNames.order,
-              trailing: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.secondary),
-                ),
-                child: Icon(
-                  Icons.receipt_long_outlined,
-                  color: AppColors.secondary,
-                  size: 22,
-                ),
+          builder: (context) {
+            final table = settings.arguments! as RestaurantTable;
+            final role = context.read<AuthRepository>().currentUser?.role;
+            final canAccessPayments = RouteAccess.canAccess(
+              role: role,
+              routeName: RouteNames.payments,
+            );
+
+            return ProtectedRoutePage(
+              routeName: RouteNames.order,
+              child: PosShell(
+                title: 'SOFIA Check',
+                subtitle: 'Toma de orden',
+                currentRoute: RouteNames.order,
+                trailing: canAccessPayments
+                    ? Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () {
+                            Navigator.of(context).pushReplacementNamed(
+                              RouteNames.payments,
+                              arguments: table.id,
+                            );
+                          },
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppColors.secondary),
+                            ),
+                            child: Icon(
+                              Icons.point_of_sale_rounded,
+                              color: AppColors.secondary,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                      )
+                    : Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.secondary),
+                        ),
+                        child: Icon(
+                          Icons.receipt_long_outlined,
+                          color: AppColors.secondary,
+                          size: 22,
+                        ),
+                      ),
+                child: OrderView(table: table),
               ),
-              child: OrderView(table: settings.arguments! as RestaurantTable),
-            ),
-          ),
+            );
+          },
         );
       case RouteNames.kitchen:
         return MaterialPageRoute(
@@ -82,14 +120,18 @@ class AppRouter {
           ),
         );
       case RouteNames.payments:
+        final initialTableId = settings.arguments is int
+            ? settings.arguments! as int
+            : null;
+
         return MaterialPageRoute(
-          builder: (_) => const ProtectedRoutePage(
+          builder: (_) => ProtectedRoutePage(
             routeName: RouteNames.payments,
             child: PosShell(
               title: 'Caja',
-              subtitle: 'Cobros y resumen del día',
+              subtitle: 'Cobros y resumen del dia',
               currentRoute: RouteNames.payments,
-              child: PaymentView(),
+              child: PaymentView(initialTableId: initialTableId),
             ),
           ),
         );
@@ -98,10 +140,22 @@ class AppRouter {
           builder: (_) => const ProtectedRoutePage(
             routeName: RouteNames.cashCut,
             child: PosShell(
-              title: 'Corte del día',
+              title: 'Corte del dia',
               subtitle: 'Resumen de caja',
               currentRoute: RouteNames.cashCut,
               child: CashCutView(),
+            ),
+          ),
+        );
+      case RouteNames.todaySales:
+        return MaterialPageRoute(
+          builder: (_) => const ProtectedRoutePage(
+            routeName: RouteNames.todaySales,
+            child: PosShell(
+              title: 'Ventas del dia',
+              subtitle: 'Ventas del dia',
+              currentRoute: RouteNames.todaySales,
+              child: TodaySalesView(),
             ),
           ),
         );

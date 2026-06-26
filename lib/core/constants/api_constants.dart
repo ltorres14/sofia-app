@@ -10,6 +10,9 @@ class ApiConstants {
   static const String products = '/api/products';
   static const String orders = '/api/orders';
   static const String kitchenTickets = '/api/kitchen/tickets';
+  static const String paymentOrderByTable = '/api/payments/order-by-table';
   static const String payOrder = '/api/payments/pay-order';
   static const String cashCutToday = '/api/cashcut/today';
+  static const String cashCutTodaySales = '/api/cashcut/today/sales';
+  static const String cashCutCloseToday = '/api/cashcut/close-today';
 }

@@ -5,4 +5,5 @@ class RouteNames {
   static const String kitchen = '/kitchen';
   static const String payments = '/payments';
   static const String cashCut = '/cash-cut';
+  static const String todaySales = '/today-sales';
 }
