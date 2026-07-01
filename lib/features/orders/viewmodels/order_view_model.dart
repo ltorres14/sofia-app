@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/network/api_exception.dart';
 import '../../../data/models/orders/order.dart';
 import '../../../data/models/orders/order_selection.dart';
 import '../../../data/models/orders/order_selection_item.dart';
@@ -38,7 +39,7 @@ class OrderViewModel extends ChangeNotifier {
     mainCategory,
     'Tostadas',
     'Tostitos',
-    'Cócteles',
+    'Cocteles',
     'Especialidades',
     drinksCategory,
     extrasCategory,
@@ -59,6 +60,9 @@ class OrderViewModel extends ChangeNotifier {
   bool isOrderExpanded = false;
 
   String? errorMessage;
+  String? actionErrorMessage;
+
+  bool get isSendingToKitchen => isSending;
 
   List<String> get categories => const [
     allCategory,
@@ -67,12 +71,23 @@ class OrderViewModel extends ChangeNotifier {
     extrasCategory,
   ];
 
-  List<OrderSelection> get visibleSelections {
-    if (_draftSelections.isNotEmpty) {
-      return List<OrderSelection>.unmodifiable(_draftSelections);
+  List<OrderSelection> get visibleSelections =>
+      List<OrderSelection>.unmodifiable([
+        ..._activeSelectionsFromOrder(order),
+        ..._draftSelections.where(_isVisibleSelection),
+      ]);
+
+  List<OrderSelection> get localDraftSelections =>
+      List<OrderSelection>.unmodifiable(
+        _draftSelections.where(_isVisibleSelection),
+      );
+
+  bool get hasPendingItemsToSend {
+    if (localDraftSelections.isNotEmpty) {
+      return true;
     }
 
-    return List<OrderSelection>.unmodifiable(order?.selections ?? const []);
+    return order?.items.any((item) => item.quantity > 0) ?? false;
   }
 
   double get visibleTotal {
@@ -83,7 +98,9 @@ class OrderViewModel extends ChangeNotifier {
       );
     }
 
-    return order?.items.fold<double>(0, (sum, item) => sum + item.total) ?? 0;
+    return order?.total ??
+        order?.items.fold<double>(0, (sum, item) => sum + item.total) ??
+        0;
   }
 
   int get visibleItemCount {
@@ -102,45 +119,6 @@ class OrderViewModel extends ChangeNotifier {
     return order?.items.fold<int>(0, (sum, item) => sum + item.quantity) ?? 0;
   }
 
-  bool get hasPendingLocalSelectionChanges {
-    final persistedSelections = order?.selections ?? const <OrderSelection>[];
-
-    if (_draftSelections.length != persistedSelections.length) {
-      return _draftSelections.isNotEmpty || persistedSelections.isNotEmpty;
-    }
-
-    for (var index = 0; index < _draftSelections.length; index++) {
-      final draft = _draftSelections[index];
-      final persisted = persistedSelections[index];
-
-      if (draft.id != persisted.id ||
-          draft.sequenceNumber != persisted.sequenceNumber ||
-          draft.label != persisted.label ||
-          draft.notes != persisted.notes ||
-          draft.total != persisted.total ||
-          draft.items.length != persisted.items.length) {
-        return true;
-      }
-
-      for (var itemIndex = 0; itemIndex < draft.items.length; itemIndex++) {
-        final draftItem = draft.items[itemIndex];
-        final persistedItem = persisted.items[itemIndex];
-
-        if (draftItem.productId != persistedItem.productId ||
-            draftItem.quantity != persistedItem.quantity ||
-            draftItem.unitPrice != persistedItem.unitPrice ||
-            draftItem.total != persistedItem.total ||
-            draftItem.role != persistedItem.role ||
-            draftItem.sortOrder != persistedItem.sortOrder ||
-            draftItem.notes != persistedItem.notes) {
-          return true;
-        }
-      }
-    }
-
-    return false;
-  }
-
   OrderSelection? selectionById(int selectionId) {
     for (final selection in visibleSelections) {
       if (selection.id == selectionId) {
@@ -149,6 +127,24 @@ class OrderViewModel extends ChangeNotifier {
     }
 
     return null;
+  }
+
+  bool canEditSelection(OrderSelection selection) {
+    return _isVisibleSelection(selection) && selection.resolvedCanEdit;
+  }
+
+  bool canDeleteSelection(OrderSelection selection) {
+    return _isVisibleSelection(selection) && selection.resolvedCanDelete;
+  }
+
+  bool canEditSelectionComment(OrderSelection selection) {
+    return _isVisibleSelection(selection) &&
+        !selection.isCancelled &&
+        selection.id != 0;
+  }
+
+  String statusLabelForSelection(OrderSelection selection) {
+    return selection.statusLabel;
   }
 
   Product? productById(int productId) {
@@ -244,36 +240,68 @@ class OrderViewModel extends ChangeNotifier {
         !_productMatchesCategory(product, extrasCategory);
   }
 
-  Future<void> load(RestaurantTable table) async {
+  Future<void> load(RestaurantTable table, {bool showLoading = true}) async {
     _currentTableId = table.id;
-    isLoading = true;
-    errorMessage = null;
-    notifyListeners();
+
+    if (showLoading) {
+      isLoading = true;
+      errorMessage = null;
+      notifyListeners();
+    }
 
     try {
-      products = _sortProducts(await _productRepository.getProducts());
+      if (products.isEmpty) {
+        products = _sortProducts(await _productRepository.getProducts());
+      }
 
-      selectedCategory = allCategory;
-      showingCategories = true;
+      if (showLoading) {
+        selectedCategory = allCategory;
+        showingCategories = true;
+      }
 
-      order = await _orderRepository.getOpenOrderByTable(table.id);
+      await _loadOrCreateOrder(table.id);
       _restoreDraftSelectionsForTable(table.id);
 
-      if (order == null) {
-        final userId = _authRepository.currentUser?.userId;
-
-        if (userId == null) {
-          throw Exception('No hay usuario autenticado.');
-        }
-
-        await _tableRepository.openTable(table.id, userId);
-        order = await _orderRepository.getOpenOrderByTable(table.id);
-        _restoreDraftSelectionsForTable(table.id);
+      if (showLoading) {
+        errorMessage = null;
       }
     } catch (error) {
-      errorMessage = error.toString().replaceFirst('Exception: ', '');
+      if (showLoading) {
+        errorMessage = error.toString().replaceFirst('Exception: ', '');
+      }
     } finally {
-      isLoading = false;
+      if (showLoading) {
+        isLoading = false;
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<void> refreshCurrentTableOrder({bool showLoading = false}) async {
+    final currentTableId = _currentTableId;
+    if (currentTableId == null) {
+      return;
+    }
+
+    if (showLoading) {
+      isLoading = true;
+      errorMessage = null;
+      notifyListeners();
+    }
+
+    try {
+      order = await _orderRepository.getOpenOrderByTable(currentTableId);
+      if (showLoading) {
+        errorMessage = null;
+      }
+    } catch (error) {
+      if (showLoading) {
+        errorMessage = error.toString().replaceFirst('Exception: ', '');
+      }
+    } finally {
+      if (showLoading) {
+        isLoading = false;
+      }
       notifyListeners();
     }
   }
@@ -308,10 +336,10 @@ class OrderViewModel extends ChangeNotifier {
         productId: product.id,
       );
 
-      order = await _orderRepository.getOpenOrderByTable(table.id);
-      _restoreDraftSelectionsForTable(table.id);
+      await refreshCurrentTableOrder();
     } catch (error) {
       errorMessage = error.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
     } finally {
       isLoading = false;
       notifyListeners();
@@ -324,16 +352,12 @@ class OrderViewModel extends ChangeNotifier {
     required RestaurantTable table,
     required List<ProductSelection> complements,
   }) async {
-    if (order == null) return;
-
     _currentTableId = table.id;
-    isLoading = true;
     errorMessage = null;
-    notifyListeners();
 
     try {
       _draftSelections = [
-        ...visibleSelections,
+        ...localDraftSelections,
         _buildLocalSelection(
           mainProduct: mainProduct,
           quantity: quantity,
@@ -346,6 +370,45 @@ class OrderViewModel extends ChangeNotifier {
     } catch (error) {
       errorMessage = error.toString().replaceFirst('Exception: ', '');
     } finally {
+      notifyListeners();
+    }
+  }
+
+  Future<void> saveSelectionChanges({
+    required OrderSelection selection,
+    required Product mainProduct,
+    required int quantity,
+    required List<ProductSelection> complements,
+  }) async {
+    if (selection.isLocalDraft) {
+      replaceSelectionLocally(
+        selection: selection,
+        mainProduct: mainProduct,
+        quantity: quantity,
+        complements: complements,
+      );
+      return;
+    }
+
+    actionErrorMessage = null;
+    isLoading = true;
+    notifyListeners();
+
+    try {
+      await _orderRepository.updateSelection(
+        selectionId: selection.id,
+        label: selection.label,
+        notes: selection.displayComment,
+        items: _buildRequestItems(
+          mainProduct: mainProduct,
+          quantity: quantity,
+          complements: complements,
+        ),
+      );
+      await refreshCurrentTableOrder();
+    } catch (error) {
+      await _handleActionError(error, refreshAfterConflict: true);
+    } finally {
       isLoading = false;
       notifyListeners();
     }
@@ -357,7 +420,7 @@ class OrderViewModel extends ChangeNotifier {
     required int quantity,
     required List<ProductSelection> complements,
   }) {
-    final currentSelections = visibleSelections;
+    final currentSelections = localDraftSelections;
     if (currentSelections.isEmpty) return;
 
     _draftSelections = currentSelections.map((currentSelection) {
@@ -372,6 +435,7 @@ class OrderViewModel extends ChangeNotifier {
         sequenceNumber: currentSelection.sequenceNumber,
         selectionId: currentSelection.id,
         label: currentSelection.label,
+        comment: currentSelection.comment,
         notes: currentSelection.notes,
         createdAt: currentSelection.createdAt,
         status: currentSelection.status,
@@ -382,11 +446,80 @@ class OrderViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void removeSelectionLocally(int selectionId) {
-    final currentSelections = visibleSelections;
-    if (currentSelections.isEmpty) return;
+  Future<void> deleteSelection(OrderSelection selection) async {
+    if (selection.isLocalDraft) {
+      removeSelectionLocally(selection.id);
+      return;
+    }
 
-    final remainingSelections = currentSelections
+    actionErrorMessage = null;
+    isLoading = true;
+    notifyListeners();
+
+    try {
+      await _orderRepository.deleteSelection(selection.id);
+      await refreshCurrentTableOrder();
+    } catch (error) {
+      await _handleActionError(error, refreshAfterConflict: true);
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateSelectionComment({
+    required OrderSelection selection,
+    required String comment,
+  }) async {
+    if (selection.isLocalDraft) {
+      _updateLocalSelectionComment(selection.id, comment);
+      return true;
+    }
+
+    final currentOrder = order;
+    if (currentOrder == null ||
+        currentOrder.id <= 0 ||
+        selection.id <= 0 ||
+        selection.isCancelled) {
+      return false;
+    }
+
+    actionErrorMessage = null;
+    isLoading = true;
+    notifyListeners();
+
+    try {
+      await _orderRepository.updateSelectionComment(
+        orderId: currentOrder.id,
+        selectionId: selection.id,
+        comment: comment,
+      );
+      await refreshCurrentTableOrder();
+      return true;
+    } catch (error) {
+      await _handleActionError(error, refreshAfterConflict: true);
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void _updateLocalSelectionComment(int selectionId, String comment) {
+    _draftSelections = localDraftSelections.map((selection) {
+      if (selection.id != selectionId) {
+        return selection;
+      }
+
+      return selection.copyWith(comment: comment, notes: comment);
+    }).toList();
+
+    _saveCurrentDraft();
+    notifyListeners();
+  }
+
+  void removeSelectionLocally(int selectionId) {
+    final remainingSelections = localDraftSelections
         .where((selection) => selection.id != selectionId)
         .toList();
 
@@ -394,7 +527,7 @@ class OrderViewModel extends ChangeNotifier {
       for (var index = 0; index < remainingSelections.length; index++)
         _copySelectionWithSequence(
           remainingSelections[index],
-          sequenceNumber: index + 1,
+          sequenceNumber: _activeSelectionsFromOrder(order).length + index + 1,
         ),
     ];
 
@@ -403,33 +536,38 @@ class OrderViewModel extends ChangeNotifier {
   }
 
   Future<bool> sendToKitchen() async {
-    final hasPendingChanges = hasPendingLocalSelectionChanges;
     final currentOrder = order;
-    final validSelections = visibleSelections
+    final draftSelectionsToSend = localDraftSelections
         .where((selection) => selection.items.any((item) => item.quantity > 0))
         .toList();
-    if (currentOrder == null) return false;
-    if (currentOrder.id <= 0) return false;
-    if (isSending) return false;
-    if (validSelections.isEmpty && currentOrder.items.isEmpty) {
-      errorMessage = 'No hay productos para enviar a cocina';
+    final hasLegacyItems =
+        currentOrder?.items.any((item) => item.quantity > 0) ?? false;
+
+    if (currentOrder == null || currentOrder.id <= 0 || isSending) {
+      return false;
+    }
+
+    if (draftSelectionsToSend.isEmpty && !hasLegacyItems) {
+      actionErrorMessage = 'No hay productos para enviar a cocina.';
       notifyListeners();
       return false;
     }
 
     isSending = true;
-    errorMessage = null;
+    actionErrorMessage = null;
     notifyListeners();
 
     try {
-      if (hasPendingChanges && validSelections.isNotEmpty) {
-        await _persistDraftSelectionsForSend(validSelections);
+      if (draftSelectionsToSend.isNotEmpty) {
+        await _persistDraftSelectionsForSend(draftSelectionsToSend);
       }
 
-      await _orderRepository.sendToKitchen(order!.id);
+      await _orderRepository.sendToKitchen(currentOrder.id);
+      _clearCurrentDrafts();
+      await refreshCurrentTableOrder();
       return true;
     } catch (error) {
-      errorMessage = error.toString().replaceFirst('Exception: ', '');
+      await _handleActionError(error);
       return false;
     } finally {
       isSending = false;
@@ -437,51 +575,13 @@ class OrderViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> _persistDraftSelectionsForSend(
-    List<OrderSelection> selections,
-  ) async {
-    var latestOrder = order;
-
-    for (final selection in selections) {
-      final items = selection.items
-          .where((item) => item.quantity > 0)
-          .map(
-            (item) => CreateOrderSelectionItemRequest(
-              productId: item.productId,
-              quantity: item.quantity,
-              role: item.role,
-              sortOrder: item.sortOrder,
-              notes: item.notes,
-            ),
-          )
-          .toList();
-
-      if (items.isEmpty) {
-        continue;
-      }
-
-      latestOrder = await _orderRepository.addSelection(
-        orderId: latestOrder!.id,
-        label: selection.label,
-        notes: selection.notes,
-        items: items,
-      );
+  void clearActionError() {
+    if (actionErrorMessage == null) {
+      return;
     }
 
-    order = latestOrder;
-    _syncDraftSelectionsFromOrder();
-  }
-
-  Future<void> refreshAfterSendToKitchen(RestaurantTable table) async {
-    try {
-      order = await _orderRepository.getOpenOrderByTable(table.id);
-      _syncDraftSelectionsFromOrder();
-      _draftSelectionsByTable.remove(table.id);
-    } catch (error) {
-      errorMessage = error.toString().replaceFirst('Exception: ', '');
-    } finally {
-      notifyListeners();
-    }
+    actionErrorMessage = null;
+    notifyListeners();
   }
 
   OrderSelection _buildLocalSelection({
@@ -491,6 +591,7 @@ class OrderViewModel extends ChangeNotifier {
     required int sequenceNumber,
     int? selectionId,
     String? label,
+    String? comment,
     String? notes,
     DateTime? createdAt,
     int? status,
@@ -538,12 +639,49 @@ class OrderViewModel extends ChangeNotifier {
       id: selectionId ?? _buildLocalSelectionId(sequenceNumber),
       sequenceNumber: sequenceNumber,
       label: resolvedLabel,
+      comment: comment,
       notes: notes,
-      status: status ?? 1,
+      status: status ?? OrderSelection.draftStatus,
+      canEdit: true,
+      canDelete: true,
       createdAt: createdAt ?? DateTime.now(),
       total: items.fold<double>(0, (sum, item) => sum + item.total),
       items: items,
     );
+  }
+
+  List<CreateOrderSelectionItemRequest> _buildRequestItems({
+    required Product mainProduct,
+    required int quantity,
+    required List<ProductSelection> complements,
+  }) {
+    final items = <CreateOrderSelectionItemRequest>[
+      CreateOrderSelectionItemRequest(
+        productId: mainProduct.id,
+        quantity: quantity,
+        role: 1,
+        sortOrder: 1,
+        notes: '',
+      ),
+    ];
+
+    var sortOrder = 2;
+    for (final complement in complements) {
+      if (complement.quantity <= 0) continue;
+
+      items.add(
+        CreateOrderSelectionItemRequest(
+          productId: complement.product.id,
+          quantity: complement.quantity,
+          role: _resolveSelectionRole(complement),
+          sortOrder: sortOrder,
+          notes: '',
+        ),
+      );
+      sortOrder++;
+    }
+
+    return items;
   }
 
   bool _productMatchesCategory(Product product, String category) {
@@ -633,27 +771,117 @@ class OrderViewModel extends ChangeNotifier {
     return 3;
   }
 
-  void _syncDraftSelectionsFromOrder() {
-    _draftSelections = List<OrderSelection>.from(order?.selections ?? const []);
+  Future<void> _loadOrCreateOrder(int tableId) async {
+    order = await _orderRepository.getOpenOrderByTable(tableId);
+
+    if (order != null) {
+      return;
+    }
+
+    final userId = _authRepository.currentUser?.userId;
+    if (userId == null) {
+      throw Exception('No hay usuario autenticado.');
+    }
+
+    await _tableRepository.openTable(tableId, userId);
+    order = await _orderRepository.getOpenOrderByTable(tableId);
+  }
+
+  Future<void> _persistDraftSelectionsForSend(
+    List<OrderSelection> selections,
+  ) async {
+    var latestOrder = order;
+
+    for (final selection in selections) {
+      final items = selection.items
+          .where((item) => item.quantity > 0)
+          .map(
+            (item) => CreateOrderSelectionItemRequest(
+              productId: item.productId,
+              quantity: item.quantity,
+              role: item.role,
+              sortOrder: item.sortOrder,
+              notes: item.notes,
+            ),
+          )
+          .toList();
+
+      if (items.isEmpty) {
+        continue;
+      }
+
+      latestOrder = await _orderRepository.addSelection(
+        orderId: latestOrder!.id,
+        label: selection.label,
+        notes: selection.displayComment,
+        items: items,
+      );
+    }
+
+    order = latestOrder;
+  }
+
+  bool _isVisibleSelection(OrderSelection selection) {
+    return !selection.isCancelled && selection.hasVisibleItems;
+  }
+
+  List<OrderSelection> _activeSelectionsFromOrder(Order? sourceOrder) {
+    return (sourceOrder?.selections ?? const <OrderSelection>[])
+        .where(_isVisibleSelection)
+        .toList();
   }
 
   void _restoreDraftSelectionsForTable(int tableId) {
     final savedDraftSelections = _draftSelectionsByTable[tableId];
-
-    if (savedDraftSelections != null) {
-      _draftSelections = List<OrderSelection>.from(savedDraftSelections);
-      return;
-    }
-
-    _syncDraftSelectionsFromOrder();
+    _draftSelections = List<OrderSelection>.from(
+      savedDraftSelections ?? const [],
+    );
   }
 
   void _saveCurrentDraft() {
-    if (_currentTableId == null) return;
+    if (_currentTableId == null) {
+      return;
+    }
+
+    final visibleDrafts = _draftSelections.where(_isVisibleSelection).toList();
+    _draftSelections = visibleDrafts;
+
+    if (visibleDrafts.isEmpty) {
+      _draftSelectionsByTable.remove(_currentTableId!);
+      return;
+    }
 
     _draftSelectionsByTable[_currentTableId!] = List<OrderSelection>.from(
-      _draftSelections,
+      visibleDrafts,
     );
+  }
+
+  void _clearCurrentDrafts() {
+    if (_currentTableId != null) {
+      _draftSelectionsByTable.remove(_currentTableId!);
+    }
+    _draftSelections = [];
+  }
+
+  Future<void> _handleActionError(
+    Object error, {
+    bool refreshAfterConflict = false,
+  }) async {
+    final message = error.toString().replaceFirst('Exception: ', '');
+
+    if (error is ApiException && error.statusCode == 409) {
+      actionErrorMessage = message.isNotEmpty
+          ? message
+          : 'La seleccion ya comenzo a prepararse y no puede modificarse.';
+      if (refreshAfterConflict && _currentTableId != null) {
+        try {
+          order = await _orderRepository.getOpenOrderByTable(_currentTableId!);
+        } catch (_) {}
+      }
+      return;
+    }
+
+    actionErrorMessage = message;
   }
 
   int _buildLocalSelectionId(int sequenceNumber) => -sequenceNumber;
@@ -666,20 +894,16 @@ class OrderViewModel extends ChangeNotifier {
     OrderSelection selection, {
     required int sequenceNumber,
   }) {
-    return OrderSelection(
-      id: selection.id,
+    return selection.copyWith(
       sequenceNumber: sequenceNumber,
-      label: 'Selección $sequenceNumber',
-      notes: selection.notes,
-      status: selection.status,
-      createdAt: selection.createdAt,
-      total: selection.total,
-      items: selection.items,
+      label: 'Seleccion $sequenceNumber',
     );
   }
 
-  static int? draftSelectionCountForTable(int tableId) {
-    return _draftSelectionsByTable[tableId]?.length;
+  static int draftSelectionCountForTable(int tableId) {
+    return _draftSelectionsByTable[tableId]
+            ?.where((selection) => selection.hasVisibleItems)
+            .length ??
+        0;
   }
 }
-

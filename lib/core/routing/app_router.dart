@@ -59,7 +59,7 @@ class AppRouter {
               routeName: RouteNames.order,
               child: PosShell(
                 title: 'SOFIA Check',
-                subtitle: 'Toma de orden',
+                subtitle: 'Toma de orden - ${table.name}',
                 currentRoute: RouteNames.order,
                 trailing: canAccessPayments
                     ? Material(

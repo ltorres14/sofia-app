@@ -5,33 +5,30 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/date_time_formatter.dart';
 import '../../../data/models/kitchen/kitchen_ticket.dart';
 import '../../../data/models/kitchen/kitchen_ticket_item.dart';
+import '../../../data/models/kitchen/kitchen_ticket_selection.dart';
 
 class KitchenTicketCard extends StatelessWidget {
   const KitchenTicketCard({
     super.key,
     required this.ticket,
     required this.onAdvanceStatus,
+    required this.isLegacyActionLoading,
+    required this.onAdvanceSelectionStatus,
+    required this.isSelectionLoading,
   });
 
   final KitchenTicket ticket;
   final VoidCallback onAdvanceStatus;
+  final bool isLegacyActionLoading;
+  final Future<void> Function(KitchenTicketSelection selection)
+  onAdvanceSelectionStatus;
+  final bool Function(KitchenTicketSelection selection) isSelectionLoading;
 
   @override
   Widget build(BuildContext context) {
     final responsive = AppResponsive.of(context);
     final theme = Theme.of(context);
-    final statusText = switch (ticket.status) {
-      1 => 'Pendiente',
-      2 => 'Preparando',
-      3 => 'Listo',
-      _ => 'Cancelado',
-    };
-    final statusColor = switch (ticket.status) {
-      1 => AppColors.warning,
-      2 => AppColors.primary,
-      3 => AppColors.success,
-      _ => AppColors.danger,
-    };
+    final ticketStatus = _statusPresentation(ticket.status);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -70,8 +67,8 @@ class KitchenTicketCard extends StatelessWidget {
                 SizedBox(width: responsive.spacingSm),
                 Flexible(
                   child: _StatusChip(
-                    label: statusText,
-                    color: statusColor,
+                    label: ticketStatus.label,
+                    color: ticketStatus.color,
                     responsive: responsive,
                   ),
                 ),
@@ -79,7 +76,7 @@ class KitchenTicketCard extends StatelessWidget {
             ),
             SizedBox(height: responsive.spacingXs),
             Text(
-              'Orden #${ticket.orderId} · ${DateTimeFormatter.shortTime(ticket.createdAt)}',
+              'Orden #${ticket.orderId} - ${DateTimeFormatter.shortTime(ticket.createdAt)}',
               style: theme.textTheme.bodySmall?.copyWith(
                 fontSize: responsive.captionFontSize,
                 color: AppColors.textSecondary,
@@ -91,31 +88,19 @@ class KitchenTicketCard extends StatelessWidget {
               ..._buildSelectionItems(context, responsive)
             else
               ..._buildLegacyItems(context, responsive),
-            SizedBox(height: responsive.spacingMd),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: ticket.status >= 3 ? null : onAdvanceStatus,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.white,
-                  minimumSize: Size(
-                    double.infinity,
-                    responsive.orderActionButtonHeight.clamp(48.0, 56.0),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  textStyle: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                icon: const Icon(Icons.local_fire_department_rounded),
-                label: Text(
-                  ticket.status == 1 ? 'Marcar preparando' : 'Marcar listo',
-                ),
+            if (ticket.selections.isEmpty) ...[
+              SizedBox(height: responsive.spacingMd),
+              _ActionButton(
+                label: ticket.status == 1
+                    ? 'Marcar preparando'
+                    : 'Marcar listo',
+                icon: Icons.local_fire_department_rounded,
+                onPressed: ticket.status >= 3 || isLegacyActionLoading
+                    ? null
+                    : onAdvanceStatus,
+                loading: isLegacyActionLoading,
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -130,42 +115,14 @@ class KitchenTicketCard extends StatelessWidget {
 
     return [
       for (final selection in ticket.selections) ...[
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(responsive.spacingSm),
-          decoration: BoxDecoration(
-            color: AppColors.softBackground,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                selection.label.isNotEmpty
-                    ? selection.label
-                    : 'Selección ${selection.sequenceNumber}',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontSize: responsive.orderBodyFontSize,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              if ((selection.comment ?? '').trim().isNotEmpty) ...[
-                SizedBox(height: responsive.spacingXs),
-                Text(
-                  selection.comment?.trim() ?? '',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontSize: responsive.captionFontSize,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-              SizedBox(height: responsive.spacingSm),
-              ..._buildSelectionItemList(context, selection.items, responsive),
-            ],
-          ),
+        _SelectionCard(
+          selection: selection,
+          responsive: responsive,
+          theme: theme,
+          selectionLoading: isSelectionLoading(selection),
+          onAdvanceSelectionStatus: onAdvanceSelectionStatus,
+          itemListBuilder: (items) =>
+              _buildSelectionItemList(context, items, responsive),
         ),
         SizedBox(height: responsive.spacingSm),
       ],
@@ -235,6 +192,162 @@ class KitchenTicketCard extends StatelessWidget {
   }
 }
 
+class _SelectionCard extends StatelessWidget {
+  const _SelectionCard({
+    required this.selection,
+    required this.responsive,
+    required this.theme,
+    required this.selectionLoading,
+    required this.onAdvanceSelectionStatus,
+    required this.itemListBuilder,
+  });
+
+  final KitchenTicketSelection selection;
+  final AppResponsive responsive;
+  final ThemeData theme;
+  final bool selectionLoading;
+  final Future<void> Function(KitchenTicketSelection selection)
+  onAdvanceSelectionStatus;
+  final List<Widget> Function(List<KitchenTicketItem> items) itemListBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    final selectionStatus = _statusPresentation(selection.status);
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(responsive.spacingSm),
+      decoration: BoxDecoration(
+        color: AppColors.softBackground,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  selection.label.isNotEmpty
+                      ? selection.label
+                      : 'Selección ${selection.sequenceNumber}',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontSize: responsive.orderBodyFontSize,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              SizedBox(width: responsive.spacingSm),
+              Flexible(
+                child: _StatusChip(
+                  label: selectionStatus.label,
+                  color: selectionStatus.color,
+                  responsive: responsive,
+                ),
+              ),
+            ],
+          ),
+          if (selection.hasComment) ...[
+            SizedBox(height: responsive.spacingXs),
+            Text(
+              selection.displayComment,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: responsive.captionFontSize,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          SizedBox(height: responsive.spacingSm),
+          ...itemListBuilder(selection.items),
+          if (selection.status < 3) ...[
+            SizedBox(height: responsive.spacingXs),
+            _ActionButton(
+              label: selection.status == 1
+                  ? 'Marcar preparando'
+                  : 'Marcar listo',
+              icon: selection.status == 1
+                  ? Icons.local_fire_department_rounded
+                  : Icons.check_circle_rounded,
+              onPressed: selectionLoading
+                  ? null
+                  : () {
+                      onAdvanceSelectionStatus(selection);
+                    },
+              loading: selectionLoading,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    required this.loading,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    final responsive = AppResponsive.of(context);
+    final theme = Theme.of(context);
+
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.white,
+          minimumSize: Size(
+            double.infinity,
+            responsive.orderActionButtonHeight.clamp(48.0, 56.0),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          textStyle: theme.textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (loading)
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    AppColors.white,
+                  ),
+                ),
+              )
+            else
+              Icon(icon),
+            SizedBox(width: responsive.spacingSm),
+            Text(label),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _StatusChip extends StatelessWidget {
   const _StatusChip({
     required this.label,
@@ -270,4 +383,20 @@ class _StatusChip extends StatelessWidget {
       ),
     );
   }
+}
+
+_KitchenStatusPresentation _statusPresentation(int status) {
+  return switch (status) {
+    1 => _KitchenStatusPresentation('Pendiente', AppColors.warning),
+    2 => _KitchenStatusPresentation('Preparando', AppColors.primary),
+    3 => _KitchenStatusPresentation('Listo', AppColors.success),
+    _ => _KitchenStatusPresentation('Cancelado', AppColors.danger),
+  };
+}
+
+class _KitchenStatusPresentation {
+  const _KitchenStatusPresentation(this.label, this.color);
+
+  final String label;
+  final Color color;
 }

@@ -292,7 +292,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
     }
 
     if (mounted) {
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(true);
     }
   }
 }

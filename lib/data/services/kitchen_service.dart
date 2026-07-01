@@ -28,4 +28,24 @@ class KitchenService {
       ApiClient.instance.parseError(error);
     }
   }
+
+  Future<void> markSelectionPreparing(int ticketId, int selectionId) async {
+    try {
+      await _client.put(
+        '${ApiConstants.kitchenTickets}/$ticketId/selections/$selectionId/preparing',
+      );
+    } catch (error) {
+      ApiClient.instance.parseError(error);
+    }
+  }
+
+  Future<void> markSelectionReady(int ticketId, int selectionId) async {
+    try {
+      await _client.put(
+        '${ApiConstants.kitchenTickets}/$ticketId/selections/$selectionId/ready',
+      );
+    } catch (error) {
+      ApiClient.instance.parseError(error);
+    }
+  }
 }

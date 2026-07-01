@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 
 import '../../../core/responsive/app_responsive.dart';
 import '../../../core/theme/app_colors.dart';
@@ -25,6 +26,10 @@ class OrderView extends StatefulWidget {
 }
 
 class _OrderViewState extends State<OrderView> {
+  Timer? _pollingTimer;
+  bool _isSelectionSheetOpen = false;
+  String? _lastActionError;
+
   Future<void> _showOrderDetails(
     BuildContext context,
     OrderViewModel viewModel,
@@ -54,20 +59,33 @@ class _OrderViewState extends State<OrderView> {
                   visibleTotal: liveViewModel.visibleTotal,
                   visibleItemCount: liveViewModel.visibleItemCount,
                   tableName: widget.table.name,
-                  sending: liveViewModel.isSending,
+                  sending: liveViewModel.isSendingToKitchen,
+                  canSendToKitchen: liveViewModel.hasPendingItemsToSend,
+                  canEditSelection: liveViewModel.canEditSelection,
+                  canEditSelectionComment:
+                      liveViewModel.canEditSelectionComment,
+                  canDeleteSelection: liveViewModel.canDeleteSelection,
+                  statusLabelForSelection:
+                      liveViewModel.statusLabelForSelection,
                   onSendToKitchen: () async {
+                    if (liveViewModel.isSendingToKitchen) return;
                     final success = await liveViewModel.sendToKitchen();
-                    if (!sheetContext.mounted || !success) return;
+                    if (!success) return;
+                    if (!sheetContext.mounted) return;
                     Navigator.of(sheetContext).pop();
-                    await liveViewModel.refreshAfterSendToKitchen(widget.table);
                   },
                   onEditSelection: (selection) => _showEditSelectionDetail(
                     panelContext,
                     liveViewModel,
                     selection.id,
                   ),
+                  onSaveSelectionComment: (selection, comment) =>
+                      liveViewModel.updateSelectionComment(
+                        selection: selection,
+                        comment: comment,
+                      ),
                   onDeleteSelection: (selection) =>
-                      liveViewModel.removeSelectionLocally(selection.id),
+                      liveViewModel.deleteSelection(selection),
                   resolveProductById: liveViewModel.productById,
                 ),
               );
@@ -95,7 +113,8 @@ class _OrderViewState extends State<OrderView> {
               .toList()
         : const <Product>[];
 
-    return showModalBottomSheet<void>(
+    _isSelectionSheetOpen = true;
+    final didSave = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -125,6 +144,12 @@ class _OrderViewState extends State<OrderView> {
         );
       },
     );
+    _isSelectionSheetOpen = false;
+
+    if (!mounted) return;
+    if (didSave == true) {
+      await viewModel.refreshCurrentTableOrder();
+    }
   }
 
   Future<void> _showEditSelectionDetail(
@@ -135,10 +160,13 @@ class _OrderViewState extends State<OrderView> {
     final selection = viewModel.selectionById(selectionId);
     if (selection == null) return;
 
-    final mainItem = selection.items
-        .where((item) => item.role == 1)
-        .cast<dynamic>()
-        .firstWhere((_) => true, orElse: () => null);
+    dynamic mainItem;
+    for (final item in selection.items) {
+      if (item.role == 1) {
+        mainItem = item;
+        break;
+      }
+    }
 
     if (mainItem == null) return;
 
@@ -162,7 +190,8 @@ class _OrderViewState extends State<OrderView> {
         if (item.role != 1) item.productId: item.quantity,
     };
 
-    return showModalBottomSheet<void>(
+    _isSelectionSheetOpen = true;
+    final didSave = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -185,7 +214,7 @@ class _OrderViewState extends State<OrderView> {
             initialComplementQuantities: initialComplementQuantities,
             onAdd: (product, quantity, complements) async {},
             onSaveChanges: (selectedProduct, quantity, complements) async {
-              viewModel.replaceSelectionLocally(
+              await viewModel.saveSelectionChanges(
                 selection: selection,
                 mainProduct: selectedProduct,
                 quantity: quantity,
@@ -196,6 +225,28 @@ class _OrderViewState extends State<OrderView> {
         );
       },
     );
+    _isSelectionSheetOpen = false;
+
+    if (!mounted) return;
+    if (didSave == true) {
+      await viewModel.refreshCurrentTableOrder();
+    }
+  }
+
+  void _startPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
+      if (!mounted || _isSelectionSheetOpen) {
+        return;
+      }
+
+      final route = ModalRoute.of(context);
+      if (route?.isCurrent == false) {
+        return;
+      }
+
+      await context.read<OrderViewModel>().refreshCurrentTableOrder();
+    });
   }
 
   Future<void> _showCategoryProducts(
@@ -240,12 +291,39 @@ class _OrderViewState extends State<OrderView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<OrderViewModel>().load(widget.table);
     });
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<OrderViewModel>(
       builder: (context, viewModel, child) {
+        if (viewModel.actionErrorMessage == null) {
+          _lastActionError = null;
+        }
+
+        if (viewModel.actionErrorMessage != null &&
+            viewModel.actionErrorMessage != _lastActionError) {
+          final actionError = viewModel.actionErrorMessage!;
+          _lastActionError = actionError;
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(content: Text(actionError)));
+
+            viewModel.clearActionError();
+          });
+        }
+
         return LoadingOverlay(
           loading: viewModel.isLoading,
           child: viewModel.errorMessage != null

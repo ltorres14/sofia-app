@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 
 import '../../../core/responsive/app_responsive.dart';
 import '../../../core/routing/route_access.dart';
 import '../../../core/routing/route_names.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/responsive_helper.dart';
+import '../../../data/models/tables/restaurant_table.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_overlay.dart';
@@ -21,7 +23,31 @@ class TablesView extends StatefulWidget {
 }
 
 class _TablesViewState extends State<TablesView> {
+  Timer? _pollingTimer;
   String? _lastActionError;
+
+  Future<void> _openOrderForTable(
+    BuildContext context,
+    TablesViewModel viewModel,
+    AuthRepository authRepository,
+    RestaurantTable table,
+  ) async {
+    final role = authRepository.currentUser?.role;
+
+    if (!RouteAccess.canAccess(role: role, routeName: RouteNames.order)) {
+      if (!context.mounted) return;
+      Navigator.pushReplacementNamed(
+        context,
+        RouteAccess.defaultRouteForRole(role),
+      );
+      return;
+    }
+
+    await Navigator.pushNamed(context, RouteNames.order, arguments: table);
+
+    if (!mounted) return;
+    await viewModel.load();
+  }
 
   @override
   void initState() {
@@ -29,6 +55,24 @@ class _TablesViewState extends State<TablesView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TablesViewModel>().load();
     });
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      if (!mounted) {
+        return;
+      }
+
+      final route = ModalRoute.of(context);
+      if (route?.isCurrent == false) {
+        return;
+      }
+
+      await context.read<TablesViewModel>().load(showLoading: false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -113,25 +157,13 @@ class _TablesViewState extends State<TablesView> {
 
                               try {
                                 await viewModel.ensureOrderForTable(freeTable);
-
-                                final role = authRepository.currentUser?.role;
-
-                                if (context.mounted &&
-                                    RouteAccess.canAccess(
-                                      role: role,
-                                      routeName: RouteNames.order,
-                                    )) {
-                                  Navigator.pushNamed(
-                                    context,
-                                    RouteNames.order,
-                                    arguments: freeTable,
-                                  );
-                                } else if (context.mounted) {
-                                  Navigator.pushReplacementNamed(
-                                    context,
-                                    RouteAccess.defaultRouteForRole(role),
-                                  );
-                                }
+                                if (!context.mounted) return;
+                                await _openOrderForTable(
+                                  context,
+                                  viewModel,
+                                  authRepository,
+                                  freeTable,
+                                );
                               } catch (_) {
                                 // El ViewModel ya expone el error a la UI.
                               }
@@ -168,7 +200,11 @@ class _TablesViewState extends State<TablesView> {
                             return TableCard(
                               table: table,
                               responsive: responsive,
-                              draftSelectionCount: draftSelectionCount,
+                              selectionCount: viewModel
+                                  .displayedSelectionCountForTable(
+                                    table,
+                                    draftSelectionCount: draftSelectionCount,
+                                  ),
                               onTap: () async {
                                 final role = authRepository.currentUser?.role;
                                 final canOpenPayments = RouteAccess.canAccess(
@@ -189,23 +225,13 @@ class _TablesViewState extends State<TablesView> {
 
                                 try {
                                   await viewModel.ensureOrderForTable(table);
-
-                                  if (context.mounted &&
-                                      RouteAccess.canAccess(
-                                        role: role,
-                                        routeName: RouteNames.order,
-                                      )) {
-                                    Navigator.pushNamed(
-                                      context,
-                                      RouteNames.order,
-                                      arguments: table,
-                                    );
-                                  } else if (context.mounted) {
-                                    Navigator.pushReplacementNamed(
-                                      context,
-                                      RouteAccess.defaultRouteForRole(role),
-                                    );
-                                  }
+                                  if (!context.mounted) return;
+                                  await _openOrderForTable(
+                                    context,
+                                    viewModel,
+                                    authRepository,
+                                    table,
+                                  );
                                 } catch (_) {
                                   // El ViewModel ya expone el error a la UI.
                                 }

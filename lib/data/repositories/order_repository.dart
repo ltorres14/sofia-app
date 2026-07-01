@@ -1,4 +1,5 @@
 import '../models/orders/order.dart';
+import '../models/orders/order_selection.dart';
 import '../services/order_service.dart';
 
 class OrderRepository {
@@ -39,6 +40,35 @@ class OrderRepository {
   }
 
   Future<void> sendToKitchen(int orderId) => _service.sendToKitchen(orderId);
+
+  Future<OrderSelection> updateSelection({
+    required int selectionId,
+    required String label,
+    String? notes,
+    required List<CreateOrderSelectionItemRequest> items,
+  }) {
+    return _service.updateSelection(
+      selectionId: selectionId,
+      label: label,
+      notes: notes,
+      items: items,
+    );
+  }
+
+  Future<void> updateSelectionComment({
+    required int orderId,
+    required int selectionId,
+    required String comment,
+  }) {
+    return _service.updateSelectionComment(
+      orderId: orderId,
+      selectionId: selectionId,
+      comment: comment,
+    );
+  }
+
+  Future<void> deleteSelection(int selectionId) =>
+      _service.deleteSelection(selectionId);
 
   Future<void> requestBill(int orderId) => _service.requestBill(orderId);
 }

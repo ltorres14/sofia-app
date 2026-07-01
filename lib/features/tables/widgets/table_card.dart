@@ -10,29 +10,28 @@ class TableCard extends StatelessWidget {
     required this.table,
     required this.responsive,
     required this.onTap,
-    this.draftSelectionCount,
+    required this.selectionCount,
   });
 
   final RestaurantTable table;
   final AppResponsive responsive;
   final VoidCallback onTap;
-  final int? draftSelectionCount;
+  final int selectionCount;
 
   @override
   Widget build(BuildContext context) {
+    final hasActiveSelections = selectionCount > 0;
     final color = table.waitingPayment
         ? AppColors.tableWaitingPayment
-        : table.hasOrder
+        : hasActiveSelections
         ? AppColors.tableWithOrder
         : AppColors.tableFree;
 
     final label = table.waitingPayment
         ? 'Esperando pago'
-        : table.hasOrder
+        : hasActiveSelections
         ? 'Con orden'
         : 'Libre';
-
-    final selectionCount = draftSelectionCount ?? table.activeOrdersCount;
 
     return DecoratedBox(
       decoration: BoxDecoration(

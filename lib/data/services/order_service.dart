@@ -1,6 +1,7 @@
 import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../models/orders/order.dart';
+import '../models/orders/order_selection.dart';
 
 class CreateOrderSelectionItemRequest {
   CreateOrderSelectionItemRequest({
@@ -80,6 +81,50 @@ class OrderService {
         },
       );
       return Order.fromJson(response.data as Map<String, dynamic>);
+    } catch (error) {
+      ApiClient.instance.parseError(error);
+    }
+  }
+
+  Future<OrderSelection> updateSelection({
+    required int selectionId,
+    required String label,
+    String? notes,
+    required List<CreateOrderSelectionItemRequest> items,
+  }) async {
+    try {
+      final response = await _client.put(
+        '${ApiConstants.orders}/selections/$selectionId',
+        data: {
+          'label': label,
+          'notes': notes ?? '',
+          'items': items.map((item) => item.toJson()).toList(),
+        },
+      );
+      return OrderSelection.fromJson(response.data as Map<String, dynamic>);
+    } catch (error) {
+      ApiClient.instance.parseError(error);
+    }
+  }
+
+  Future<void> updateSelectionComment({
+    required int orderId,
+    required int selectionId,
+    required String comment,
+  }) async {
+    try {
+      await _client.put(
+        '${ApiConstants.orders}/$orderId/selections/$selectionId/comment',
+        data: {'comment': comment},
+      );
+    } catch (error) {
+      ApiClient.instance.parseError(error);
+    }
+  }
+
+  Future<void> deleteSelection(int selectionId) async {
+    try {
+      await _client.delete('${ApiConstants.orders}/selections/$selectionId');
     } catch (error) {
       ApiClient.instance.parseError(error);
     }

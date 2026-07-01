@@ -19,9 +19,15 @@ class CurrentOrderPanel extends StatefulWidget {
     required this.tableName,
     required this.onSendToKitchen,
     required this.onEditSelection,
+    required this.onSaveSelectionComment,
     required this.onDeleteSelection,
     required this.resolveProductById,
     required this.sending,
+    required this.canSendToKitchen,
+    required this.canEditSelection,
+    required this.canEditSelectionComment,
+    required this.canDeleteSelection,
+    required this.statusLabelForSelection,
   });
 
   final Order? order;
@@ -31,9 +37,16 @@ class CurrentOrderPanel extends StatefulWidget {
   final String tableName;
   final Future<void> Function() onSendToKitchen;
   final Future<void> Function(OrderSelection selection) onEditSelection;
-  final void Function(OrderSelection selection) onDeleteSelection;
+  final Future<bool> Function(OrderSelection selection, String comment)
+  onSaveSelectionComment;
+  final Future<void> Function(OrderSelection selection) onDeleteSelection;
   final Product? Function(int productId) resolveProductById;
   final bool sending;
+  final bool canSendToKitchen;
+  final bool Function(OrderSelection selection) canEditSelection;
+  final bool Function(OrderSelection selection) canEditSelectionComment;
+  final bool Function(OrderSelection selection) canDeleteSelection;
+  final String Function(OrderSelection selection) statusLabelForSelection;
 
   @override
   State<CurrentOrderPanel> createState() => _CurrentOrderPanelState();
@@ -81,6 +94,9 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
         ? widget.visibleTotal
         : (order?.total ??
               legacyItems.fold<double>(0, (sum, item) => sum + item.total));
+    final hasItemsToSend = widget.canSendToKitchen;
+    final showPendingEmptyState =
+        order != null && !hasSelections && legacyItems.isEmpty;
 
     return SafeArea(
       child: Padding(
@@ -195,7 +211,9 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
                 child: order == null || (!hasSelections && legacyItems.isEmpty)
                     ? Center(
                         child: Text(
-                          'Aun no hay productos agregados.',
+                          showPendingEmptyState
+                              ? 'No hay items pendientes para cocina.'
+                              : 'Aun no hay productos agregados.',
                           textAlign: TextAlign.center,
                           style: textTheme.bodyMedium?.copyWith(
                             fontSize: responsive.orderBodyFontSize,
@@ -211,16 +229,27 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
                         itemCount: selections.length,
                         separatorBuilder: (context, index) =>
                             SizedBox(height: responsive.spacingSm),
-                        itemBuilder: (context, index) => _SelectionCard(
-                          selection: selections[index],
-                          responsive: responsive,
-                          onEdit: () => widget.onEditSelection(selections[index]),
-                          onDelete: () => _confirmDeleteSelection(
-                            context,
-                            selections[index],
-                          ),
-                          resolveProductById: widget.resolveProductById,
-                        ),
+                        itemBuilder: (context, index) {
+                          final selection = selections[index];
+                          return _SelectionCard(
+                            selection: selection,
+                            responsive: responsive,
+                            canEdit: widget.canEditSelection(selection),
+                            canEditComment: widget.canEditSelectionComment(
+                              selection,
+                            ),
+                            canDelete: widget.canDeleteSelection(selection),
+                            statusLabel: widget.statusLabelForSelection(
+                              selection,
+                            ),
+                            onEdit: () => widget.onEditSelection(selection),
+                            onEditComment: () =>
+                                _showEditCommentDialog(context, selection),
+                            onDelete: () =>
+                                _confirmDeleteSelection(context, selection),
+                            resolveProductById: widget.resolveProductById,
+                          );
+                        },
                       )
                     : ListView.separated(
                         physics: const BouncingScrollPhysics(),
@@ -287,7 +316,9 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
                     height: responsive.orderActionButtonHeight,
                     width: double.infinity,
                     child: FilledButton(
-                      onPressed: isSending ? null : _handleSendToKitchen,
+                      onPressed: isSending || !hasItemsToSend
+                          ? null
+                          : _handleSendToKitchen,
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: AppColors.white,
@@ -350,7 +381,7 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
           borderRadius: BorderRadius.circular(responsive.productListCardRadius),
         ),
         title: Text(
-          'Eliminar selección',
+          'Eliminar seleccion',
           style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(
             fontSize: responsive.orderTitleFontSize,
             fontWeight: FontWeight.w900,
@@ -358,7 +389,7 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
           ),
         ),
         content: Text(
-          '¿Seguro que quieres eliminar esta selección?',
+          'Seguro que quieres eliminar esta seleccion?',
           style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
             fontSize: responsive.orderBodyFontSize,
             fontWeight: FontWeight.w600,
@@ -393,8 +424,111 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
     );
 
     if (confirmed == true) {
-      widget.onDeleteSelection(selection);
+      await widget.onDeleteSelection(selection);
     }
+  }
+
+  Future<void> _showEditCommentDialog(
+    BuildContext context,
+    OrderSelection selection,
+  ) async {
+    final responsive = AppResponsive.of(context);
+    var comment = selection.displayComment;
+    var isSaving = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.white,
+          surfaceTintColor: AppColors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(
+              responsive.productListCardRadius,
+            ),
+          ),
+          title: Text(
+            'Editar comentario',
+            style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(
+              fontSize: responsive.orderTitleFontSize,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          content: TextFormField(
+            initialValue: comment,
+            enabled: !isSaving,
+            autofocus: true,
+            minLines: 3,
+            maxLines: 5,
+            textCapitalization: TextCapitalization.sentences,
+            onChanged: (value) {
+              comment = value;
+            },
+            decoration: const InputDecoration(hintText: 'Agrega un comentario'),
+          ),
+          actionsPadding: EdgeInsets.fromLTRB(
+            responsive.spacingXl,
+            0,
+            responsive.spacingXl,
+            responsive.spacingXl,
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      setDialogState(() {
+                        isSaving = true;
+                      });
+
+                      final saved = await widget.onSaveSelectionComment(
+                        selection,
+                        comment.trim(),
+                      );
+
+                      if (!dialogContext.mounted) {
+                        return;
+                      }
+
+                      if (saved) {
+                        Navigator.of(dialogContext).pop();
+                        return;
+                      }
+
+                      setDialogState(() {
+                        isSaving = false;
+                      });
+                    },
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+                minimumSize: const Size(96, 44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        valueColor: AlwaysStoppedAnimation(AppColors.white),
+                      ),
+                    )
+                  : const Text('Guardar'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -402,26 +536,36 @@ class _SelectionCard extends StatelessWidget {
   const _SelectionCard({
     required this.selection,
     required this.responsive,
+    required this.canEdit,
+    required this.canEditComment,
+    required this.canDelete,
+    required this.statusLabel,
     required this.onEdit,
+    required this.onEditComment,
     required this.onDelete,
     required this.resolveProductById,
   });
 
   final OrderSelection selection;
   final AppResponsive responsive;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final bool canEdit;
+  final bool canEditComment;
+  final bool canDelete;
+  final String statusLabel;
+  final Future<void> Function() onEdit;
+  final Future<void> Function() onEditComment;
+  final Future<void> Function() onDelete;
   final Product? Function(int productId) resolveProductById;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final notes = selection.notes?.trim() ?? '';
+    final comment = selection.displayComment;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onEdit,
+        onTap: canEdit ? () => onEdit() : null,
         borderRadius: BorderRadius.circular(responsive.productListCardRadius),
         child: Ink(
           padding: EdgeInsets.all(responsive.productListCardPadding),
@@ -444,34 +588,64 @@ class _SelectionCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      selection.label.isNotEmpty
-                          ? selection.label
-                          : 'Seleccion ${selection.sequenceNumber}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.titleMedium?.copyWith(
-                        fontSize: responsive.orderTitleFontSize,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          selection.label.isNotEmpty
+                              ? selection.label
+                              : 'Seleccion ${selection.sequenceNumber}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.titleMedium?.copyWith(
+                            fontSize: responsive.orderTitleFontSize,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        SizedBox(height: responsive.spacingXs / 2),
+                        _SelectionStatusChip(
+                          label: statusLabel,
+                          responsive: responsive,
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(width: responsive.spacingSm),
-                  _SelectionActionButton(
-                    icon: Icons.edit_outlined,
-                    responsive: responsive,
-                    onPressed: onEdit,
-                  ),
-                  SizedBox(width: responsive.spacingSm),
-                  _SelectionActionButton(
-                    icon: Icons.delete_outline_rounded,
-                    responsive: responsive,
-                    onPressed: onDelete,
-                  ),
-                  SizedBox(width: responsive.spacingSm),
+                  if (canEdit) ...[
+                    SizedBox(width: responsive.spacingSm),
+                    _SelectionActionButton(
+                      icon: Icons.edit_outlined,
+                      responsive: responsive,
+                      onPressed: () {
+                        onEdit();
+                      },
+                    ),
+                  ],
+                  if (canEditComment) ...[
+                    SizedBox(width: responsive.spacingSm),
+                    _SelectionActionButton(
+                      icon: Icons.edit_note_rounded,
+                      responsive: responsive,
+                      onPressed: () {
+                        onEditComment();
+                      },
+                    ),
+                  ],
+                  if (canDelete) ...[
+                    SizedBox(width: responsive.spacingSm),
+                    _SelectionActionButton(
+                      icon: Icons.delete_outline_rounded,
+                      responsive: responsive,
+                      onPressed: () {
+                        onDelete();
+                      },
+                    ),
+                  ],
+                  if (canEdit || canEditComment || canDelete)
+                    SizedBox(width: responsive.spacingSm),
                   Text(
                     CurrencyFormatter.format(selection.total),
                     maxLines: 1,
@@ -484,10 +658,10 @@ class _SelectionCard extends StatelessWidget {
                   ),
                 ],
               ),
-              if (notes.isNotEmpty) ...[
+              if (comment.isNotEmpty) ...[
                 SizedBox(height: responsive.spacingXs),
                 Text(
-                  notes,
+                  comment,
                   style: textTheme.bodySmall?.copyWith(
                     fontSize: responsive.captionFontSize,
                     color: AppColors.textSecondary,
@@ -509,10 +683,9 @@ class _SelectionCard extends StatelessWidget {
       return const [];
     }
 
-    final sortedItems = selection.items
-        .where((item) => item.quantity > 0)
-        .toList()
-      ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
+    final sortedItems =
+        selection.items.where((item) => item.quantity > 0).toList()
+          ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
 
     if (sortedItems.isEmpty) {
       return const [];
@@ -550,6 +723,37 @@ class _SelectionCard extends StatelessWidget {
   }
 }
 
+class _SelectionStatusChip extends StatelessWidget {
+  const _SelectionStatusChip({required this.label, required this.responsive});
+
+  final String label;
+  final AppResponsive responsive;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: responsive.spacingSm,
+          vertical: responsive.spacingXs / 2,
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _SelectionActionButton extends StatelessWidget {
   const _SelectionActionButton({
@@ -583,10 +787,7 @@ class _SelectionActionButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
           ),
         ),
-        icon: Icon(
-          icon,
-          size: responsive.iconSize.clamp(22.0, 26.0),
-        ),
+        icon: Icon(icon, size: responsive.iconSize.clamp(22.0, 26.0)),
       ),
     );
   }
@@ -614,7 +815,11 @@ class _SelectionItemRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final imagePath = _resolveSelectionItemImage(product, roleLabel, productName);
+    final imagePath = _resolveSelectionItemImage(
+      product,
+      roleLabel,
+      productName,
+    );
     final fallbackIcon = _resolveSelectionItemIcon(roleLabel);
 
     return Container(
@@ -785,7 +990,7 @@ String _resolveSelectionItemImage(
     return '${_productImagesBasePath}tostitos_base.png';
   }
 
-  if (value.contains('cóctel') || value.contains('coctel')) {
+  if (value.contains('coctel')) {
     return '${_productImagesBasePath}coctel_camaron_base.png';
   }
 
@@ -793,7 +998,7 @@ String _resolveSelectionItemImage(
     return '${_productImagesBasePath}aguachile_base.png';
   }
 
-  if (value.contains('chicharron') || value.contains('chicharrón')) {
+  if (value.contains('chicharron')) {
     return '${_productImagesBasePath}chicharron_pescado_base.png';
   }
 
