@@ -1,5 +1,6 @@
 import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
+import '../models/activity/recent_activity_item.dart';
 import '../models/kitchen/kitchen_ticket.dart';
 
 class KitchenService {
@@ -11,6 +12,24 @@ class KitchenService {
       final data = response.data as List<dynamic>;
       return data
           .map((item) => KitchenTicket.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (error) {
+      ApiClient.instance.parseError(error);
+    }
+  }
+
+  Future<List<RecentActivityItem>> getRecentActivity({int limit = 20}) async {
+    try {
+      final response = await _client.get(
+        ApiConstants.kitchenRecentActivity,
+        queryParameters: {'limit': limit},
+      );
+      final data = response.data as List<dynamic>;
+      return data
+          .map(
+            (item) =>
+                RecentActivityItem.fromJson(item as Map<String, dynamic>),
+          )
           .toList();
     } catch (error) {
       ApiClient.instance.parseError(error);

@@ -1,5 +1,6 @@
 import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
+import '../models/activity/recent_activity_item.dart';
 import '../models/orders/order.dart';
 import '../models/orders/order_selection.dart';
 
@@ -45,6 +46,24 @@ class OrderService {
         }
       }
       rethrow;
+    }
+  }
+
+  Future<List<RecentActivityItem>> getRecentActivity({int limit = 20}) async {
+    try {
+      final response = await _client.get(
+        ApiConstants.ordersRecentActivity,
+        queryParameters: {'limit': limit},
+      );
+      final data = response.data as List<dynamic>;
+      return data
+          .map(
+            (item) =>
+                RecentActivityItem.fromJson(item as Map<String, dynamic>),
+          )
+          .toList();
+    } catch (error) {
+      ApiClient.instance.parseError(error);
     }
   }
 

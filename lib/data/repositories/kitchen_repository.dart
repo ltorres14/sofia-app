@@ -1,3 +1,4 @@
+import '../models/activity/recent_activity_item.dart';
 import '../models/kitchen/kitchen_ticket.dart';
 import '../services/kitchen_service.dart';
 
@@ -8,6 +9,9 @@ class KitchenRepository {
   final KitchenService _service;
 
   Future<List<KitchenTicket>> getTickets() => _service.getTickets();
+
+  Future<List<RecentActivityItem>> getRecentActivity({int limit = 20}) =>
+      _service.getRecentActivity(limit: limit);
 
   Future<KitchenTicket> updateStatus(int id, int status) =>
       _service.updateStatus(id, status);

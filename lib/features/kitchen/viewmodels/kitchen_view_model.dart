@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../data/models/activity/recent_activity_item.dart';
 import '../../../data/models/kitchen/kitchen_ticket.dart';
 import '../../../data/models/kitchen/kitchen_ticket_selection.dart';
 import '../../../data/repositories/kitchen_repository.dart';
@@ -12,9 +13,12 @@ class KitchenViewModel extends ChangeNotifier {
   final KitchenRepository _kitchenRepository;
 
   List<KitchenTicket> tickets = [];
+  List<RecentActivityItem> recentActivities = [];
   bool isLoading = false;
+  bool isRecentActivityLoading = false;
   String? errorMessage;
   String? actionErrorMessage;
+  String? recentActivityErrorMessage;
   final Set<int> _loadingLegacyTicketIds = <int>{};
   final Set<String> _loadingSelectionKeys = <String>{};
 
@@ -32,6 +36,10 @@ class KitchenViewModel extends ChangeNotifier {
             (ticket) => ticket.selections.isNotEmpty || ticket.items.isNotEmpty,
           )
           .toList();
+      await _loadRecentActivity(
+        showLoadingState: showLoading && recentActivities.isEmpty,
+        notify: false,
+      );
       errorMessage = null;
     } catch (error) {
       final message = error.toString().replaceFirst('Exception: ', '');
@@ -161,5 +169,35 @@ class KitchenViewModel extends ChangeNotifier {
       selections: visibleSelections,
       legacyItems: ticket.legacyItems,
     );
+  }
+
+  Future<void> _loadRecentActivity({
+    bool showLoadingState = false,
+    bool notify = true,
+  }) async {
+    if (showLoadingState) {
+      isRecentActivityLoading = true;
+      recentActivityErrorMessage = null;
+      if (notify) {
+        notifyListeners();
+      }
+    }
+
+    try {
+      recentActivities = await _kitchenRepository.getRecentActivity(limit: 20);
+      recentActivityErrorMessage = null;
+    } catch (error) {
+      recentActivityErrorMessage = error.toString().replaceFirst(
+        'Exception: ',
+        '',
+      );
+    } finally {
+      if (showLoadingState) {
+        isRecentActivityLoading = false;
+      }
+      if (notify) {
+        notifyListeners();
+      }
+    }
   }
 }

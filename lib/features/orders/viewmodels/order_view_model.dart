@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
+import '../../../data/models/activity/recent_activity_item.dart';
 import '../../../data/models/orders/order.dart';
 import '../../../data/models/orders/order_selection.dart';
 import '../../../data/models/orders/order_selection_item.dart';
@@ -48,6 +49,7 @@ class OrderViewModel extends ChangeNotifier {
   static final Map<int, List<OrderSelection>> _draftSelectionsByTable = {};
 
   List<Product> products = [];
+  List<RecentActivityItem> recentActivities = [];
   Order? order;
   List<OrderSelection> _draftSelections = [];
   int? _currentTableId;
@@ -58,9 +60,11 @@ class OrderViewModel extends ChangeNotifier {
   bool isLoading = false;
   bool isSending = false;
   bool isOrderExpanded = false;
+  bool isRecentActivityLoading = false;
 
   String? errorMessage;
   String? actionErrorMessage;
+  String? recentActivityErrorMessage;
 
   bool get isSendingToKitchen => isSending;
 
@@ -261,6 +265,10 @@ class OrderViewModel extends ChangeNotifier {
 
       await _loadOrCreateOrder(table.id);
       _restoreDraftSelectionsForTable(table.id);
+      await _loadRecentActivity(
+        showLoadingState: showLoading && recentActivities.isEmpty,
+        notify: false,
+      );
 
       if (showLoading) {
         errorMessage = null;
@@ -291,6 +299,7 @@ class OrderViewModel extends ChangeNotifier {
 
     try {
       order = await _orderRepository.getOpenOrderByTable(currentTableId);
+      await _loadRecentActivity(showLoadingState: false, notify: false);
       if (showLoading) {
         errorMessage = null;
       }
@@ -769,6 +778,36 @@ class OrderViewModel extends ChangeNotifier {
     }
 
     return 3;
+  }
+
+  Future<void> _loadRecentActivity({
+    bool showLoadingState = false,
+    bool notify = true,
+  }) async {
+    if (showLoadingState) {
+      isRecentActivityLoading = true;
+      recentActivityErrorMessage = null;
+      if (notify) {
+        notifyListeners();
+      }
+    }
+
+    try {
+      recentActivities = await _orderRepository.getRecentActivity(limit: 20);
+      recentActivityErrorMessage = null;
+    } catch (error) {
+      recentActivityErrorMessage = error.toString().replaceFirst(
+        'Exception: ',
+        '',
+      );
+    } finally {
+      if (showLoadingState) {
+        isRecentActivityLoading = false;
+      }
+      if (notify) {
+        notifyListeners();
+      }
+    }
   }
 
   Future<void> _loadOrCreateOrder(int tableId) async {

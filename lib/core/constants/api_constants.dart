@@ -9,7 +9,9 @@ class ApiConstants {
   static const String tables = '/api/tables';
   static const String products = '/api/products';
   static const String orders = '/api/orders';
+  static const String ordersRecentActivity = '/api/orders/recent-activity';
   static const String kitchenTickets = '/api/kitchen/tickets';
+  static const String kitchenRecentActivity = '/api/kitchen/recent-activity';
   static const String paymentOrderByTable = '/api/payments/order-by-table';
   static const String payOrder = '/api/payments/pay-order';
   static const String cashCutToday = '/api/cashcut/today';

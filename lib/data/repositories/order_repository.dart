@@ -1,3 +1,4 @@
+import '../models/activity/recent_activity_item.dart';
 import '../models/orders/order.dart';
 import '../models/orders/order_selection.dart';
 import '../services/order_service.dart';
@@ -10,6 +11,9 @@ class OrderRepository {
 
   Future<Order?> getOpenOrderByTable(int tableId) =>
       _service.getOpenOrderByTable(tableId);
+
+  Future<List<RecentActivityItem>> getRecentActivity({int limit = 20}) =>
+      _service.getRecentActivity(limit: limit);
 
   Future<Order> addItem({
     required int orderId,

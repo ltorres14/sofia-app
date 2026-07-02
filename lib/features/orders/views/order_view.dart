@@ -5,10 +5,12 @@ import 'dart:async';
 import '../../../core/responsive/app_responsive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../data/models/activity/recent_activity_item.dart';
 import '../../../data/models/products/product.dart';
 import '../../../data/models/tables/restaurant_table.dart';
 import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_overlay.dart';
+import '../../../shared/widgets/recent_activity_card.dart';
 import '../viewmodels/order_view_model.dart';
 import '../widgets/current_order_panel.dart';
 import '../widgets/product_card.dart';
@@ -375,6 +377,12 @@ class _OrderViewState extends State<OrderView> {
             onTap: () => _showOrderDetails(context, viewModel),
           ),
           SizedBox(height: responsive.spacingMd),
+          _RecentOrderActivitySection(
+            items: viewModel.recentActivities,
+            isLoading: viewModel.isRecentActivityLoading,
+            errorMessage: viewModel.recentActivityErrorMessage,
+          ),
+          SizedBox(height: responsive.spacingMd),
           SizedBox(
             height: responsive.categoryButtonHeight + 4,
             child: ProductCategorySidebar(
@@ -407,6 +415,12 @@ class _OrderViewState extends State<OrderView> {
                 total: viewModel.visibleTotal,
                 onTap: () => _showOrderDetails(context, viewModel),
                 compact: true,
+              ),
+              SizedBox(height: responsive.spacingMd),
+              _RecentOrderActivitySection(
+                items: viewModel.recentActivities,
+                isLoading: viewModel.isRecentActivityLoading,
+                errorMessage: viewModel.recentActivityErrorMessage,
               ),
               SizedBox(height: responsive.spacingMd),
               SizedBox(
@@ -665,6 +679,149 @@ class _CategoryProductsSheet extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _RecentOrderActivitySection extends StatelessWidget {
+  const _RecentOrderActivitySection({
+    required this.items,
+    required this.isLoading,
+    required this.errorMessage,
+  });
+
+  final List<RecentActivityItem> items;
+  final bool isLoading;
+  final String? errorMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final responsive = AppResponsive.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Últimos movimientos recientes',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        SizedBox(height: responsive.spacingSm),
+        if (errorMessage != null && items.isNotEmpty) ...[
+          _RecentOrderActivityHint(message: errorMessage!),
+          SizedBox(height: responsive.spacingSm),
+        ],
+        SizedBox(
+          height: responsive.isPortrait ? 146 : 154,
+          child: _buildBody(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    final responsive = AppResponsive.of(context);
+
+    if (isLoading && items.isEmpty) {
+      return const _RecentOrderActivityState(
+        icon: Icons.sync_rounded,
+        message: 'Cargando movimientos recientes...',
+      );
+    }
+
+    if (items.isEmpty && errorMessage != null) {
+      return _RecentOrderActivityState(
+        icon: Icons.wifi_off_rounded,
+        message: errorMessage!,
+      );
+    }
+
+    if (items.isEmpty) {
+      return const _RecentOrderActivityState(
+        icon: Icons.history_rounded,
+        message: 'Sin movimientos recientes de órdenes.',
+      );
+    }
+
+    return ListView.separated(
+      scrollDirection: Axis.horizontal,
+      itemCount: items.length,
+      separatorBuilder: (_, _) => SizedBox(width: responsive.spacingSm),
+      itemBuilder: (context, index) {
+        return RecentActivityCard(item: items[index]);
+      },
+    );
+  }
+}
+
+class _RecentOrderActivityHint extends StatelessWidget {
+  const _RecentOrderActivityHint({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.16)),
+      ),
+      child: Text(
+        message,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _RecentOrderActivityState extends StatelessWidget {
+  const _RecentOrderActivityState({
+    required this.icon,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.textSecondary, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
