@@ -4,9 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../../../core/config/business_config.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/responsive/app_responsive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../core/utils/responsive_helper.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../viewmodels/pin_login_view_model.dart';
 
@@ -113,70 +113,56 @@ class _PinLoginBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final responsive = ResponsiveHelper(context);
-    final screenWidth = responsive.width;
-    final screenHeight = responsive.height;
-    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
-
-    final horizontalPadding = screenWidth * 0.06;
-    final logoSize = (screenWidth * 0.28).clamp(92.0, 124.0);
-
-    final topSpace = screenHeight * 0.035;
-    final headerGap = screenHeight * 0.014;
-    final cardTopGap = screenHeight * 0.026;
-    final footerGap = screenHeight * 0.026;
+    final responsive = AppResponsive.of(context);
 
     return SafeArea(
       child: SingleChildScrollView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: EdgeInsets.fromLTRB(
-          horizontalPadding,
-          topSpace,
-          horizontalPadding,
-          bottomInset + 18,
+          responsive.loginHorizontalPadding,
+          responsive.loginTopSpacing,
+          responsive.loginHorizontalPadding,
+          responsive.viewInsetBottom + responsive.spacingMd,
         ),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            minHeight: screenHeight -
-                MediaQuery.paddingOf(context).top -
-                MediaQuery.paddingOf(context).bottom -
-                topSpace,
+            minHeight: (responsive.keyboardAwareAvailableHeight -
+                    responsive.loginTopSpacing)
+                .clamp(0.0, double.infinity),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _BusinessLogo(size: logoSize),
-              SizedBox(height: headerGap),
+              _BusinessLogo(size: responsive.loginLogoSize),
+              SizedBox(height: responsive.loginHeaderGap),
               Text(
                 BusinessConfig.current.businessName,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.sectionTitle.copyWith(
                   color: AppColors.textPrimary,
-                  fontSize: screenWidth * 0.068,
+                  fontSize: responsive.loginBusinessTitleFontSize,
                   fontWeight: FontWeight.w900,
                   height: 1.08,
                 ),
               ),
-              SizedBox(height: screenHeight * 0.008),
+              SizedBox(height: responsive.loginCardInnerGapXs),
               Text(
                 'Sistema punto de venta',
                 textAlign: TextAlign.center,
                 style: AppTextStyles.subtitle.copyWith(
                   color: AppColors.textSecondary,
-                  fontSize: screenWidth * 0.039,
+                  fontSize: responsive.loginSupportFontSize,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              SizedBox(height: cardTopGap),
+              SizedBox(height: responsive.loginCardTopGap),
               _PinCard(
                 viewModel: viewModel,
                 pinController: pinController,
                 pinFocusNode: pinFocusNode,
                 onTapPin: onTapPin,
-                screenWidth: screenWidth,
-                screenHeight: screenHeight,
               ),
-              SizedBox(height: footerGap),
+              SizedBox(height: responsive.loginFooterGap),
               const _FooterBrand(),
             ],
           ),
@@ -229,22 +215,16 @@ class _PinCard extends StatelessWidget {
     required this.pinController,
     required this.pinFocusNode,
     required this.onTapPin,
-    required this.screenWidth,
-    required this.screenHeight,
   });
 
   final PinLoginViewModel viewModel;
   final TextEditingController pinController;
   final FocusNode pinFocusNode;
   final VoidCallback onTapPin;
-  final double screenWidth;
-  final double screenHeight;
 
   @override
   Widget build(BuildContext context) {
-    final cardPaddingHorizontal = screenWidth * 0.065;
-    final cardPaddingVertical = screenHeight * 0.027;
-    final dotSize = screenWidth * 0.092;
+    final responsive = AppResponsive.of(context);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -252,8 +232,8 @@ class _PinCard extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.symmetric(
-          horizontal: cardPaddingHorizontal,
-          vertical: cardPaddingVertical,
+          horizontal: responsive.loginCardHorizontalPadding,
+          vertical: responsive.loginCardVerticalPadding,
         ),
         decoration: BoxDecoration(
           color: AppColors.white,
@@ -274,36 +254,36 @@ class _PinCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const _LockBadge(),
-            SizedBox(height: screenHeight * 0.018),
+            SizedBox(height: responsive.loginCardInnerGapSm),
             Text(
               'Ingresa tu PIN',
               textAlign: TextAlign.center,
               style: AppTextStyles.sectionTitle.copyWith(
                 color: AppColors.textPrimary,
-                fontSize: screenWidth * 0.064,
+                fontSize: responsive.loginTitleFontSize,
                 fontWeight: FontWeight.w900,
                 height: 1.1,
               ),
             ),
-            SizedBox(height: screenHeight * 0.010),
+            SizedBox(height: responsive.loginCardInnerGapXs),
             Text(
               'Acceso para personal autorizado',
               textAlign: TextAlign.center,
               style: AppTextStyles.subtitle.copyWith(
                 color: AppColors.textSecondary,
-                fontSize: screenWidth * 0.036,
+                fontSize: responsive.loginSubtitleFontSize,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            SizedBox(height: screenHeight * 0.030),
+            SizedBox(height: responsive.loginCardInnerGapLg),
             _PinDotsIndicator(
               length: AppConstants.pinLength,
               filled: viewModel.pin.length,
-              dotSize: dotSize,
+              dotSize: responsive.loginPinDotSize,
             ),
-            SizedBox(height: screenHeight * 0.030),
+            SizedBox(height: responsive.loginCardInnerGapLg),
             const _ShieldDivider(),
-            SizedBox(height: screenHeight * 0.022),
+            SizedBox(height: responsive.loginCardInnerGapMd),
             const _AuthorizedInfoBox(),
             SizedBox(
               height: 1,
@@ -315,13 +295,13 @@ class _PinCard extends StatelessWidget {
               ),
             ),
             if (viewModel.errorMessage != null) ...[
-              SizedBox(height: screenHeight * 0.020),
+              SizedBox(height: responsive.loginCardInnerGapMd),
               Text(
                 viewModel.errorMessage!,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.danger,
-                  fontSize: screenWidth * 0.036,
+                  fontSize: responsive.loginSubtitleFontSize,
                   fontWeight: FontWeight.w700,
                 ),
               ),

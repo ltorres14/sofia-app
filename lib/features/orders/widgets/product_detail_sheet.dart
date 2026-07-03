@@ -18,6 +18,7 @@ class ProductDetailSheet extends StatefulWidget {
     this.editMode = false,
     this.initialQuantity,
     this.initialComplementQuantities,
+    this.initialComment,
     this.onSaveChanges,
   });
 
@@ -28,16 +29,19 @@ class ProductDetailSheet extends StatefulWidget {
     Product product,
     int quantity,
     List<ProductSelection> complements,
+    String comment,
   )
   onAdd;
   final bool isPrimaryProduct;
   final bool editMode;
   final int? initialQuantity;
   final Map<int, int>? initialComplementQuantities;
+  final String? initialComment;
   final Future<void> Function(
     Product product,
     int quantity,
     List<ProductSelection> complements,
+    String comment,
   )?
   onSaveChanges;
 
@@ -49,6 +53,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
   int _quantity = 1;
   bool _submitting = false;
   final Map<int, int> _complementQuantities = {};
+  late final TextEditingController _commentController;
 
   @override
   void initState() {
@@ -57,6 +62,15 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
     _complementQuantities.addAll(
       widget.initialComplementQuantities ?? const {},
     );
+    _commentController = TextEditingController(
+      text: widget.initialComment?.trim() ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
   }
 
   @override
@@ -68,172 +82,190 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
 
     return SafeArea(
       top: false,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.softBackground,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(sheetRadius),
-          ),
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
         ),
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.only(
-                top: responsive.spacingSm,
-                bottom: responsive.spacingMd,
-              ),
-              child: Center(
-                child: Container(
-                  width: responsive.isPortrait ? 44 : 56,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.softBackground,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(sheetRadius),
             ),
-            Expanded(
-              child: ListView(
-                physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(
-                  responsive.spacingLg,
-                  0,
-                  responsive.spacingLg,
-                  responsive.spacingLg,
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.only(
+                  top: responsive.spacingSm,
+                  bottom: responsive.spacingMd,
                 ),
-                children: [
-                  _ProductHeroCard(
-                    product: widget.product,
-                    quantity: _quantity,
-                    responsive: responsive,
-                    onDecrement: _quantity > 1
-                        ? () => setState(() => _quantity--)
-                        : null,
-                    onIncrement: () => setState(() => _quantity++),
+                child: Center(
+                  child: Container(
+                    width: responsive.isPortrait ? 44 : 56,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
                   ),
-                  if (widget.isPrimaryProduct &&
-                      widget.beverages.isNotEmpty) ...[
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
+                    responsive.spacingLg,
+                    0,
+                    responsive.spacingLg,
+                    MediaQuery.viewInsetsOf(context).bottom +
+                        responsive.spacingLg,
+                  ),
+                  children: [
+                    _ProductHeroCard(
+                      product: widget.product,
+                      quantity: _quantity,
+                      responsive: responsive,
+                      onDecrement: _quantity > 1
+                          ? () => setState(() => _quantity--)
+                          : null,
+                      onIncrement: () => setState(() => _quantity++),
+                    ),
                     SizedBox(height: responsive.spacingLg),
-                    _SectionTitle(
-                      title: 'Complementa con bebidas',
-                      subtitle: 'Opcional',
+                    _CommentCard(
+                      controller: _commentController,
                       responsive: responsive,
                     ),
-                    SizedBox(height: responsive.spacingSm),
-                    ...widget.beverages.map(
-                      (product) => _ComplementTile(
-                        product: product,
-                        quantity: _complementQuantities[product.id] ?? 0,
-                        icon: Icons.local_drink_rounded,
+                    if (widget.isPrimaryProduct &&
+                        widget.beverages.isNotEmpty) ...[
+                      SizedBox(height: responsive.spacingLg),
+                      _SectionTitle(
+                        title: 'Complementa con bebidas',
+                        subtitle: 'Opcional',
                         responsive: responsive,
-                        onChanged: (value) =>
-                            _updateComplement(product.id, value),
                       ),
-                    ),
-                  ],
-                  if (widget.isPrimaryProduct && widget.extras.isNotEmpty) ...[
-                    SizedBox(height: responsive.spacingMd),
-                    _SectionTitle(
-                      title: 'Agrega extras',
-                      subtitle: 'Opcional',
-                      responsive: responsive,
-                    ),
-                    SizedBox(height: responsive.spacingSm),
-                    ...widget.extras.map(
-                      (product) => _ComplementTile(
-                        product: product,
-                        quantity: _complementQuantities[product.id] ?? 0,
-                        icon: Icons.add_circle_outline_rounded,
-                        responsive: responsive,
-                        onChanged: (value) =>
-                            _updateComplement(product.id, value),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            Container(
-              padding: EdgeInsets.fromLTRB(
-                responsive.spacingLg,
-                responsive.spacingMd,
-                responsive.spacingLg,
-                responsive.spacingLg,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                border: const Border(top: BorderSide(color: AppColors.border)),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x14000000),
-                    blurRadius: 22,
-                    offset: Offset(0, -8),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Total',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontSize: responsive.orderTitleFontSize,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        CurrencyFormatter.format(total),
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontSize: responsive.orderTotalFontSize,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.primary,
+                      SizedBox(height: responsive.spacingSm),
+                      ...widget.beverages.map(
+                        (product) => _ComplementTile(
+                          product: product,
+                          quantity: _complementQuantities[product.id] ?? 0,
+                          icon: Icons.local_drink_rounded,
+                          responsive: responsive,
+                          onChanged: (value) =>
+                              _updateComplement(product.id, value),
                         ),
                       ),
                     ],
-                  ),
-                  SizedBox(height: responsive.spacingMd),
-                  SizedBox(
-                    width: double.infinity,
-                    height: responsive.productDetailFooterButtonHeight,
-                    child: FilledButton(
-                      onPressed: _submitting ? null : _handleAdd,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.white,
-                        disabledBackgroundColor: AppColors.primary.withValues(
-                          alpha: 0.55,
-                        ),
-                        disabledForegroundColor: AppColors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        textStyle: TextStyle(
-                          fontSize: responsive.orderBodyFontSize.clamp(
-                            15.0,
-                            17.0,
-                          ),
-                          fontWeight: FontWeight.w900,
+                    if (widget.isPrimaryProduct &&
+                        widget.extras.isNotEmpty) ...[
+                      SizedBox(height: responsive.spacingMd),
+                      _SectionTitle(
+                        title: 'Agrega extras',
+                        subtitle: 'Opcional',
+                        responsive: responsive,
+                      ),
+                      SizedBox(height: responsive.spacingSm),
+                      ...widget.extras.map(
+                        (product) => _ComplementTile(
+                          product: product,
+                          quantity: _complementQuantities[product.id] ?? 0,
+                          icon: Icons.add_circle_outline_rounded,
+                          responsive: responsive,
+                          onChanged: (value) =>
+                              _updateComplement(product.id, value),
                         ),
                       ),
-                      child: Text(
-                        _submitting
-                            ? (widget.editMode
-                                  ? 'Guardando...'
-                                  : 'Agregando...')
-                            : (widget.editMode ? 'Guardar cambios' : 'Agregar'),
+                    ],
+                  ],
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.fromLTRB(
+                  responsive.spacingLg,
+                  responsive.spacingMd,
+                  responsive.spacingLg,
+                  responsive.spacingLg,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  border: const Border(
+                    top: BorderSide(color: AppColors.border),
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x14000000),
+                      blurRadius: 22,
+                      offset: Offset(0, -8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Total',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontSize: responsive.orderTitleFontSize,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          CurrencyFormatter.format(total),
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontSize: responsive.orderTotalFontSize,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: responsive.spacingMd),
+                    SizedBox(
+                      width: double.infinity,
+                      height: responsive.productDetailFooterButtonHeight,
+                      child: FilledButton(
+                        onPressed: _submitting ? null : _handleAdd,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.white,
+                          disabledBackgroundColor: AppColors.primary.withValues(
+                            alpha: 0.55,
+                          ),
+                          disabledForegroundColor: AppColors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          textStyle: TextStyle(
+                            fontSize: responsive.orderBodyFontSize.clamp(
+                              15.0,
+                              17.0,
+                            ),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        child: Text(
+                          _submitting
+                              ? (widget.editMode
+                                    ? 'Guardando...'
+                                    : 'Agregando...')
+                              : (widget.editMode
+                                    ? 'Guardar cambios'
+                                    : 'Agregar'),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -265,6 +297,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
 
   Future<void> _handleAdd() async {
     setState(() => _submitting = true);
+    final comment = _commentController.text.trim();
 
     final selections = [
       ...widget.beverages
@@ -285,15 +318,104 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
           ),
     ];
 
-    if (widget.editMode && widget.onSaveChanges != null) {
-      await widget.onSaveChanges!(widget.product, _quantity, selections);
-    } else {
-      await widget.onAdd(widget.product, _quantity, selections);
-    }
+    try {
+      if (widget.editMode && widget.onSaveChanges != null) {
+        await widget.onSaveChanges!(
+          widget.product,
+          _quantity,
+          selections,
+          comment,
+        );
+      } else {
+        await widget.onAdd(widget.product, _quantity, selections, comment);
+      }
 
-    if (mounted) {
-      Navigator.of(context).pop(true);
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
     }
+  }
+}
+
+class _CommentCard extends StatelessWidget {
+  const _CommentCard({required this.controller, required this.responsive});
+
+  final TextEditingController controller;
+  final AppResponsive responsive;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: EdgeInsets.all(responsive.productListCardPadding),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(responsive.productListCardRadius),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x10000000),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Comentario para cocina',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontSize: responsive.orderTitleFontSize,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          SizedBox(height: responsive.spacingXs),
+          Text(
+            'Opcional. Agrega instrucciones para esta seleccion.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: responsive.captionFontSize,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          SizedBox(height: responsive.spacingSm),
+          TextFormField(
+            controller: controller,
+            minLines: 3,
+            maxLines: 4,
+            textCapitalization: TextCapitalization.sentences,
+            scrollPadding: EdgeInsets.only(
+              bottom: MediaQuery.viewInsetsOf(context).bottom + 140,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Ej. sin cebolla, salsa aparte o bien dorado',
+              filled: true,
+              fillColor: AppColors.softBackground,
+              contentPadding: const EdgeInsets.all(16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide(color: AppColors.primary, width: 1.4),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -761,7 +883,7 @@ String _resolveFallbackImage(String category, [String? productName]) {
     return '${_productImagesBasePath}tostitos_base.png';
   }
 
-  if (value.contains('cóctel') || value.contains('coctel')) {
+  if (value.contains('coctel')) {
     return '${_productImagesBasePath}coctel_camaron_base.png';
   }
 
@@ -769,7 +891,7 @@ String _resolveFallbackImage(String category, [String? productName]) {
     return '${_productImagesBasePath}aguachile_base.png';
   }
 
-  if (value.contains('chicharron') || value.contains('chicharrón')) {
+  if (value.contains('chicharron')) {
     return '${_productImagesBasePath}chicharron_pescado_base.png';
   }
 

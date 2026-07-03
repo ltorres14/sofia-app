@@ -134,12 +134,13 @@ class _OrderViewState extends State<OrderView> {
             beverages: beverages,
             extras: extras,
             isPrimaryProduct: isPrimaryProduct,
-            onAdd: (selectedProduct, quantity, complements) async {
+            onAdd: (selectedProduct, quantity, complements, comment) async {
               await viewModel.addProductWithSelections(
                 mainProduct: selectedProduct,
                 quantity: quantity,
                 table: widget.table,
                 complements: complements,
+                comment: comment,
               );
             },
           ),
@@ -214,15 +215,18 @@ class _OrderViewState extends State<OrderView> {
             editMode: true,
             initialQuantity: mainItem.quantity as int,
             initialComplementQuantities: initialComplementQuantities,
-            onAdd: (product, quantity, complements) async {},
-            onSaveChanges: (selectedProduct, quantity, complements) async {
-              await viewModel.saveSelectionChanges(
-                selection: selection,
-                mainProduct: selectedProduct,
-                quantity: quantity,
-                complements: complements,
-              );
-            },
+            initialComment: selection.displayComment,
+            onAdd: (product, quantity, complements, comment) async {},
+            onSaveChanges:
+                (selectedProduct, quantity, complements, comment) async {
+                  await viewModel.saveSelectionChanges(
+                    selection: selection,
+                    mainProduct: selectedProduct,
+                    quantity: quantity,
+                    complements: complements,
+                    comment: comment,
+                  );
+                },
           ),
         );
       },
@@ -366,7 +370,7 @@ class _OrderViewState extends State<OrderView> {
   ) {
     return SingleChildScrollView(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.viewPaddingOf(context).bottom + responsive.spacingLg,
+        bottom: responsive.scrollBottomSafePadding,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -375,12 +379,6 @@ class _OrderViewState extends State<OrderView> {
             itemCount: viewModel.visibleItemCount,
             total: viewModel.visibleTotal,
             onTap: () => _showOrderDetails(context, viewModel),
-          ),
-          SizedBox(height: responsive.spacingMd),
-          _RecentOrderActivitySection(
-            items: viewModel.recentActivities,
-            isLoading: viewModel.isRecentActivityLoading,
-            errorMessage: viewModel.recentActivityErrorMessage,
           ),
           SizedBox(height: responsive.spacingMd),
           SizedBox(
@@ -394,6 +392,12 @@ class _OrderViewState extends State<OrderView> {
           ),
           SizedBox(height: responsive.spacingLg),
           ..._buildMobileSections(context, viewModel, responsive),
+          SizedBox(height: responsive.spacingXl),
+          _RecentOrderActivitySection(
+            items: viewModel.recentActivities,
+            isLoading: viewModel.isRecentActivityLoading,
+            errorMessage: viewModel.recentActivityErrorMessage,
+          ),
         ],
       ),
     );
@@ -404,61 +408,61 @@ class _OrderViewState extends State<OrderView> {
     OrderViewModel viewModel,
     AppResponsive responsive,
   ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            children: [
-              _OrderSummaryButton(
-                itemCount: viewModel.visibleItemCount,
-                total: viewModel.visibleTotal,
-                onTap: () => _showOrderDetails(context, viewModel),
-                compact: true,
-              ),
-              SizedBox(height: responsive.spacingMd),
-              _RecentOrderActivitySection(
-                items: viewModel.recentActivities,
-                isLoading: viewModel.isRecentActivityLoading,
-                errorMessage: viewModel.recentActivityErrorMessage,
-              ),
-              SizedBox(height: responsive.spacingMd),
-              SizedBox(
-                height: responsive.categoryButtonHeight,
-                child: ProductCategorySidebar(
-                  categories: viewModel.categories,
-                  selectedCategory: viewModel.selectedCategory,
-                  onSelected: viewModel.selectCategory,
-                  responsive: responsive,
-                ),
-              ),
-              SizedBox(height: responsive.spacingMd),
-              Expanded(
-                child: GridView.builder(
-                  itemCount: viewModel.filteredProducts.length,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: responsive.productGridColumns,
-                    mainAxisSpacing: responsive.spacingMd,
-                    crossAxisSpacing: responsive.spacingMd,
-                    mainAxisExtent: responsive.productCardHeight,
-                  ),
-                  itemBuilder: (context, index) {
-                    final product = viewModel.filteredProducts[index];
-
-                    return ProductCard(
-                      product: product,
-                      responsive: responsive,
-                      onTap: () {
-                        _showProductDetail(context, viewModel, product);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
+    return SingleChildScrollView(
+      padding: EdgeInsets.only(bottom: responsive.scrollBottomSafePadding),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _OrderSummaryButton(
+            itemCount: viewModel.visibleItemCount,
+            total: viewModel.visibleTotal,
+            onTap: () => _showOrderDetails(context, viewModel),
+            compact: true,
           ),
-        ),
-      ],
+          SizedBox(height: responsive.spacingMd),
+          SizedBox(
+            height: responsive.landscapeRecentActivitySectionHeight,
+            child: _RecentOrderActivitySection(
+              items: viewModel.recentActivities,
+              isLoading: viewModel.isRecentActivityLoading,
+              errorMessage: viewModel.recentActivityErrorMessage,
+            ),
+          ),
+          SizedBox(height: responsive.spacingMd),
+          SizedBox(
+            height: responsive.categoryButtonHeight,
+            child: ProductCategorySidebar(
+              categories: viewModel.categories,
+              selectedCategory: viewModel.selectedCategory,
+              onSelected: viewModel.selectCategory,
+              responsive: responsive,
+            ),
+          ),
+          SizedBox(height: responsive.spacingMd),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: viewModel.filteredProducts.length,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: responsive.productGridColumns,
+              mainAxisSpacing: responsive.spacingMd,
+              crossAxisSpacing: responsive.spacingMd,
+              mainAxisExtent: responsive.productCardHeight,
+            ),
+            itemBuilder: (context, index) {
+              final product = viewModel.filteredProducts[index];
+
+              return ProductCard(
+                product: product,
+                responsive: responsive,
+                onTap: () {
+                  _showProductDetail(context, viewModel, product);
+                },
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -617,7 +621,7 @@ class _CategoryProductsSheet extends StatelessWidget {
           16,
           12,
           16,
-          MediaQuery.viewPaddingOf(context).bottom + 16,
+          responsive.bottomSheetContentPadding,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -663,7 +667,7 @@ class _CategoryProductsSheet extends StatelessWidget {
               child: ListView.separated(
                 itemCount: products.length,
                 padding: EdgeInsets.only(
-                  bottom: MediaQuery.viewPaddingOf(context).bottom + 12,
+                  bottom: responsive.categorySheetListBottomPadding,
                 ),
                 separatorBuilder: (_, _) => const SizedBox(height: 14),
                 itemBuilder: (context, index) {
@@ -703,20 +707,75 @@ class _RecentOrderActivitySection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Últimos movimientos recientes',
+          'Historial reciente',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w900,
           ),
         ),
+        SizedBox(height: responsive.spacingXs),
+        Text(
+          'Movimientos de esta mesa y de otras ordenes recientes.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         SizedBox(height: responsive.spacingSm),
-        if (errorMessage != null && items.isNotEmpty) ...[
-          _RecentOrderActivityHint(message: errorMessage!),
-          SizedBox(height: responsive.spacingSm),
-        ],
-        SizedBox(
-          height: responsive.isPortrait ? 146 : 154,
-          child: _buildBody(context),
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(responsive.spacingMd),
+          decoration: BoxDecoration(
+            color: AppColors.softBackground,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      Icons.history_rounded,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                  ),
+                  SizedBox(width: responsive.spacingSm),
+                  Expanded(
+                    child: Text(
+                      items.isEmpty
+                          ? 'Sin actividad reciente'
+                          : 'Ultimos movimientos',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (errorMessage != null && items.isNotEmpty) ...[
+                SizedBox(height: responsive.spacingSm),
+                _RecentOrderActivityHint(message: errorMessage!),
+              ],
+              SizedBox(height: responsive.spacingSm),
+              if (responsive.isPortrait)
+                SizedBox(
+                  height: responsive.recentActivityBodyHeight,
+                  child: _buildBody(context),
+                )
+              else
+                Expanded(child: _buildBody(context)),
+            ],
+          ),
         ),
       ],
     );
@@ -739,20 +798,20 @@ class _RecentOrderActivitySection extends StatelessWidget {
       );
     }
 
-    if (items.isEmpty) {
-      return const _RecentOrderActivityState(
-        icon: Icons.history_rounded,
-        message: 'Sin movimientos recientes de órdenes.',
+    if (items.isNotEmpty) {
+      return ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: items.length,
+        separatorBuilder: (_, _) => SizedBox(width: responsive.spacingSm),
+        itemBuilder: (context, index) {
+          return RecentActivityCard(item: items[index], compact: true);
+        },
       );
     }
 
-    return ListView.separated(
-      scrollDirection: Axis.horizontal,
-      itemCount: items.length,
-      separatorBuilder: (_, _) => SizedBox(width: responsive.spacingSm),
-      itemBuilder: (context, index) {
-        return RecentActivityCard(item: items[index]);
-      },
+    return const _RecentOrderActivityState(
+      icon: Icons.history_rounded,
+      message: 'Sin movimientos recientes de ordenes.',
     );
   }
 }
@@ -787,10 +846,7 @@ class _RecentOrderActivityHint extends StatelessWidget {
 }
 
 class _RecentOrderActivityState extends StatelessWidget {
-  const _RecentOrderActivityState({
-    required this.icon,
-    required this.message,
-  });
+  const _RecentOrderActivityState({required this.icon, required this.message});
 
   final IconData icon;
   final String message;
@@ -970,7 +1026,7 @@ class _EmptyProductsMessage extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: const Text(
-        'No hay productos disponibles en esta categoría.',
+        'No hay productos disponibles en esta categoria.',
         style: TextStyle(
           color: AppColors.textSecondary,
           fontWeight: FontWeight.w600,

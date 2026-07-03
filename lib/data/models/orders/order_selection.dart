@@ -42,7 +42,8 @@ class OrderSelection {
   bool get isEditableByStatus => isDraft || isPending;
   bool get resolvedCanEdit => canEdit ?? isEditableByStatus;
   bool get resolvedCanDelete => canDelete ?? isEditableByStatus;
-  bool get hasVisibleItems => items.any((item) => item.quantity > 0);
+  bool get hasVisibleItems =>
+      items.any((item) => item.quantity > 0) || total > 0;
   String get displayComment => _firstNonEmpty(comment, notes);
   bool get hasComment => displayComment.isNotEmpty;
 

@@ -25,13 +25,21 @@ class AppResponsive {
   MediaQueryData get _mediaQuery => MediaQuery.of(context);
   Size get _size => _layoutSize ?? _mediaQuery.size;
   EdgeInsets get _padding => _mediaQuery.padding;
+  EdgeInsets get _viewInsets => _mediaQuery.viewInsets;
 
   double get screenWidth => _size.width;
   double get screenHeight => _size.height;
+  double get viewInsetBottom => _layoutSize == null ? _viewInsets.bottom : 0;
+  double get safeTopInset => _layoutSize == null ? _padding.top : 0;
+  double get safeBottomInset => _layoutSize == null ? _padding.bottom : 0;
   double get availableWidth =>
       math.max(0, screenWidth - (horizontalPadding * 2));
   double get availableHeight =>
       math.max(0, screenHeight - (verticalPadding * 2));
+  double get keyboardAwareAvailableHeight =>
+      math.max(0, screenHeight - safeTopInset - safeBottomInset - viewInsetBottom);
+  double get safeContentHeight =>
+      math.max(0, screenHeight - safeTopInset - safeBottomInset);
 
   Orientation get orientation => _mediaQuery.orientation;
   bool get isPortrait => orientation == Orientation.portrait;
@@ -290,4 +298,86 @@ class AppResponsive {
       : (screenHeight * 0.07).clamp(38, 44);
 
   double get productDetailFooterButtonHeight => buttonHeight.clamp(52, 56);
+
+  double get loginHorizontalPadding => isTablet
+      ? (screenWidth * 0.05).clamp(24, 40)
+      : (screenWidth * 0.06).clamp(18, 24);
+
+  double get loginTopSpacing => isPortrait
+      ? (safeContentHeight * 0.035).clamp(16, 28)
+      : (keyboardAwareAvailableHeight * 0.02).clamp(8, 16);
+
+  double get loginHeaderGap => isPortrait
+      ? (safeContentHeight * 0.014).clamp(8, 14)
+      : (keyboardAwareAvailableHeight * 0.012).clamp(6, 10);
+
+  double get loginCardTopGap => isPortrait
+      ? (safeContentHeight * 0.026).clamp(14, 24)
+      : (keyboardAwareAvailableHeight * 0.018).clamp(8, 16);
+
+  double get loginFooterGap => isPortrait
+      ? (safeContentHeight * 0.026).clamp(14, 24)
+      : (keyboardAwareAvailableHeight * 0.016).clamp(8, 14);
+
+  double get loginLogoSize => isPortrait
+      ? (screenWidth * 0.28).clamp(92.0, 124.0)
+      : (keyboardAwareAvailableHeight * 0.17).clamp(72.0, 98.0);
+
+  double get loginCardHorizontalPadding => isPortrait
+      ? (screenWidth * 0.065).clamp(18.0, 28.0)
+      : (screenWidth * 0.04).clamp(18.0, 24.0);
+
+  double get loginCardVerticalPadding => isPortrait
+      ? (safeContentHeight * 0.027).clamp(18.0, 26.0)
+      : (keyboardAwareAvailableHeight * 0.022).clamp(12.0, 18.0);
+
+  double get loginPinDotSize => isPortrait
+      ? (screenWidth * 0.092).clamp(28.0, 42.0)
+      : (screenWidth * 0.05).clamp(22.0, 30.0);
+
+  double get loginCardInnerGapSm => isPortrait
+      ? (safeContentHeight * 0.018).clamp(10.0, 18.0)
+      : (keyboardAwareAvailableHeight * 0.014).clamp(8.0, 12.0);
+
+  double get loginCardInnerGapXs => isPortrait
+      ? (safeContentHeight * 0.010).clamp(6.0, 10.0)
+      : (keyboardAwareAvailableHeight * 0.010).clamp(4.0, 8.0);
+
+  double get loginCardInnerGapLg => isPortrait
+      ? (safeContentHeight * 0.030).clamp(16.0, 24.0)
+      : (keyboardAwareAvailableHeight * 0.018).clamp(10.0, 16.0);
+
+  double get loginCardInnerGapMd => isPortrait
+      ? (safeContentHeight * 0.022).clamp(12.0, 18.0)
+      : (keyboardAwareAvailableHeight * 0.016).clamp(8.0, 14.0);
+
+  double get loginTitleFontSize => isPortrait
+      ? (screenWidth * 0.064).clamp(24.0, 32.0)
+      : (screenWidth * 0.042).clamp(20.0, 28.0);
+
+  double get loginBusinessTitleFontSize => isPortrait
+      ? (screenWidth * 0.068).clamp(26.0, 34.0)
+      : (screenWidth * 0.046).clamp(22.0, 30.0);
+
+  double get loginSubtitleFontSize => isPortrait
+      ? (screenWidth * 0.036).clamp(13.0, 18.0)
+      : (screenWidth * 0.024).clamp(12.0, 15.0);
+
+  double get loginSupportFontSize => isPortrait
+      ? (screenWidth * 0.039).clamp(14.0, 18.0)
+      : (screenWidth * 0.026).clamp(12.0, 16.0);
+
+  double get recentActivityBodyHeight => isPortrait
+      ? (screenHeight * 0.19).clamp(168.0, 178.0)
+      : (screenHeight * 0.16).clamp(118.0, 140.0);
+
+  double get scrollBottomSafePadding => safeBottomInset + spacingLg;
+
+  double get bottomSheetContentPadding => safeBottomInset + 16;
+
+  double get categorySheetListBottomPadding => safeBottomInset + 12;
+
+  double get landscapeRecentActivitySectionHeight => isPortrait
+      ? recentActivityBodyHeight
+      : (screenHeight * 0.28).clamp(180.0, 260.0);
 }

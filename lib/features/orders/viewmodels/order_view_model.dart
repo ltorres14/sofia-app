@@ -109,7 +109,7 @@ class OrderViewModel extends ChangeNotifier {
 
   int get visibleItemCount {
     if (visibleSelections.isNotEmpty) {
-      return visibleSelections.fold<int>(
+      final totalQuantity = visibleSelections.fold<int>(
         0,
         (sum, selection) =>
             sum +
@@ -118,6 +118,12 @@ class OrderViewModel extends ChangeNotifier {
               (itemSum, item) => itemSum + item.quantity,
             ),
       );
+
+      if (totalQuantity > 0) {
+        return totalQuantity;
+      }
+
+      return visibleSelections.length;
     }
 
     return order?.items.fold<int>(0, (sum, item) => sum + item.quantity) ?? 0;
@@ -360,6 +366,7 @@ class OrderViewModel extends ChangeNotifier {
     required int quantity,
     required RestaurantTable table,
     required List<ProductSelection> complements,
+    String comment = '',
   }) async {
     _currentTableId = table.id;
     errorMessage = null;
@@ -371,6 +378,7 @@ class OrderViewModel extends ChangeNotifier {
           mainProduct: mainProduct,
           quantity: quantity,
           complements: complements,
+          comment: comment.trim(),
           sequenceNumber: visibleSelections.length + 1,
         ),
       ];
@@ -388,6 +396,7 @@ class OrderViewModel extends ChangeNotifier {
     required Product mainProduct,
     required int quantity,
     required List<ProductSelection> complements,
+    String comment = '',
   }) async {
     if (selection.isLocalDraft) {
       replaceSelectionLocally(
@@ -395,6 +404,7 @@ class OrderViewModel extends ChangeNotifier {
         mainProduct: mainProduct,
         quantity: quantity,
         complements: complements,
+        comment: comment.trim(),
       );
       return;
     }
@@ -407,7 +417,7 @@ class OrderViewModel extends ChangeNotifier {
       await _orderRepository.updateSelection(
         selectionId: selection.id,
         label: selection.label,
-        notes: selection.displayComment,
+        notes: comment.trim(),
         items: _buildRequestItems(
           mainProduct: mainProduct,
           quantity: quantity,
@@ -428,6 +438,7 @@ class OrderViewModel extends ChangeNotifier {
     required Product mainProduct,
     required int quantity,
     required List<ProductSelection> complements,
+    String comment = '',
   }) {
     final currentSelections = localDraftSelections;
     if (currentSelections.isEmpty) return;
@@ -444,8 +455,8 @@ class OrderViewModel extends ChangeNotifier {
         sequenceNumber: currentSelection.sequenceNumber,
         selectionId: currentSelection.id,
         label: currentSelection.label,
-        comment: currentSelection.comment,
-        notes: currentSelection.notes,
+        comment: comment.trim(),
+        notes: comment.trim(),
         createdAt: currentSelection.createdAt,
         status: currentSelection.status,
       );
@@ -640,16 +651,17 @@ class OrderViewModel extends ChangeNotifier {
       sortOrder++;
     }
 
+    final normalizedComment = comment?.trim() ?? '';
     final resolvedLabel = (label != null && label.trim().isNotEmpty)
         ? label
-        : 'Seleccion $sequenceNumber';
+        : mainProduct.name;
 
     return OrderSelection(
       id: selectionId ?? _buildLocalSelectionId(sequenceNumber),
       sequenceNumber: sequenceNumber,
       label: resolvedLabel,
-      comment: comment,
-      notes: notes,
+      comment: normalizedComment,
+      notes: normalizedComment.isNotEmpty ? normalizedComment : notes,
       status: status ?? OrderSelection.draftStatus,
       canEdit: true,
       canDelete: true,
@@ -933,10 +945,7 @@ class OrderViewModel extends ChangeNotifier {
     OrderSelection selection, {
     required int sequenceNumber,
   }) {
-    return selection.copyWith(
-      sequenceNumber: sequenceNumber,
-      label: 'Seleccion $sequenceNumber',
-    );
+    return selection.copyWith(sequenceNumber: sequenceNumber);
   }
 
   static int draftSelectionCountForTable(int tableId) {

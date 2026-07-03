@@ -9,10 +9,8 @@ import '../../features/cash_cut/views/today_sales_view.dart';
 import '../../features/kitchen/views/kitchen_view.dart';
 import '../../features/orders/views/order_view.dart';
 import '../../features/payments/views/payment_view.dart';
-import '../../features/tables/viewmodels/tables_view_model.dart';
 import '../../features/tables/views/tables_view.dart';
 import '../../shared/layouts/pos_shell.dart';
-import '../../shared/widgets/loading_overlay.dart';
 import '../theme/app_colors.dart';
 import 'protected_route_page.dart';
 import 'route_access.dart';
@@ -29,19 +27,11 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => ProtectedRoutePage(
             routeName: RouteNames.tables,
-            child: Consumer<TablesViewModel>(
-              builder: (context, viewModel, child) {
-                return LoadingOverlay(
-                  loading: viewModel.isLoading,
-                  child: child!,
-                );
-              },
-              child: const PosShell(
-                title: 'SOFIA Check',
-                subtitle: 'Mesas del turno',
-                currentRoute: RouteNames.tables,
-                child: TablesView(),
-              ),
+            child: const PosShell(
+              title: 'SOFIA Check',
+              subtitle: 'Mesas del turno',
+              currentRoute: RouteNames.tables,
+              child: TablesView(),
             ),
           ),
         );

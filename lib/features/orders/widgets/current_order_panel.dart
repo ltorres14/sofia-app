@@ -87,16 +87,19 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
     final order = widget.order;
     final isSending = widget.sending || _isSending;
     final legacyItems = order?.items ?? const [];
-    final itemCount = hasSelections
+    final itemCount = widget.visibleItemCount > 0
+        ? widget.visibleItemCount
+        : hasSelections
         ? selections.length
         : legacyItems.fold<int>(0, (sum, item) => sum + item.quantity);
-    final computedTotal = hasSelections
+    final computedTotal = widget.visibleTotal > 0
         ? widget.visibleTotal
         : (order?.total ??
               legacyItems.fold<double>(0, (sum, item) => sum + item.total));
     final hasItemsToSend = widget.canSendToKitchen;
-    final showPendingEmptyState =
-        order != null && !hasSelections && legacyItems.isEmpty;
+    final hasOrderSummary = itemCount > 0 || computedTotal > 0;
+    final showPendingSyncState =
+        !hasSelections && legacyItems.isEmpty && hasOrderSummary;
 
     return SafeArea(
       child: Padding(
@@ -211,8 +214,8 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
                 child: order == null || (!hasSelections && legacyItems.isEmpty)
                     ? Center(
                         child: Text(
-                          showPendingEmptyState
-                              ? 'No hay items pendientes para cocina.'
+                          showPendingSyncState
+                              ? 'Estamos actualizando los productos de esta orden.'
                               : 'Aun no hay productos agregados.',
                           textAlign: TextAlign.center,
                           style: textTheme.bodyMedium?.copyWith(
@@ -680,7 +683,25 @@ class _SelectionCard extends StatelessWidget {
 
   List<Widget> _buildItems(BuildContext context) {
     if (selection.items.isEmpty) {
-      return const [];
+      return [
+        Container(
+          padding: EdgeInsets.all(responsive.productListCardPadding),
+          decoration: BoxDecoration(
+            color: AppColors.secondary.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(
+              responsive.productListCardRadius,
+            ),
+          ),
+          child: Text(
+            'Los detalles de esta seleccion se estan actualizando.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontSize: responsive.captionFontSize,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ];
     }
 
     final sortedItems =
