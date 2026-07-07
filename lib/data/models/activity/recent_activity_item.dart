@@ -9,6 +9,14 @@ class RecentActivityItem {
     this.orderId,
     this.ticketId,
     this.selectionId,
+    this.actorName,
+    this.selectionSequenceNumber,
+    this.selectionLabel,
+    this.selectionComment,
+    this.itemsSummary,
+    this.paymentMethod,
+    this.paymentComments,
+    this.eventGroup,
   });
 
   final String eventType;
@@ -20,9 +28,30 @@ class RecentActivityItem {
   final int? orderId;
   final int? ticketId;
   final int? selectionId;
+  final String? actorName;
+  final int? selectionSequenceNumber;
+  final String? selectionLabel;
+  final String? selectionComment;
+  final String? itemsSummary;
+  final String? paymentMethod;
+  final String? paymentComments;
+  final String? eventGroup;
 
-  bool get hasStatus => (statusLabel?.trim().isNotEmpty ?? false);
+  bool get hasStatus => _hasText(statusLabel);
   bool get hasTotal => total != null;
+  bool get hasMeaningfulTotal => total != null && total! > 0;
+  bool get hasActorName => _hasText(actorName);
+  bool get hasSelectionLabel => _hasText(selectionLabel);
+  bool get hasSelectionComment => _hasText(selectionComment);
+  bool get hasItemsSummary => _hasText(itemsSummary);
+  bool get hasPaymentMethod => _hasText(paymentMethod);
+  bool get hasPaymentComments => _hasText(paymentComments);
+
+  String get normalizedEventType => eventType.trim().toLowerCase();
+  String get normalizedEventGroup =>
+      (eventGroup ?? _defaultEventGroupForEventType(eventType))
+          .trim()
+          .toLowerCase();
 
   factory RecentActivityItem.fromJson(Map<String, dynamic> json) {
     final eventType =
@@ -60,7 +89,12 @@ class RecentActivityItem {
           'mesa',
           'Mesa',
         ]) ??
-        _readNestedString(json['table'], const ['name', 'Name', 'label', 'Label']) ??
+        _readNestedString(json['table'], const [
+          'name',
+          'Name',
+          'label',
+          'Label',
+        ]) ??
         'Mesa';
 
     final statusLabel =
@@ -72,10 +106,12 @@ class RecentActivityItem {
           'state',
           'State',
         ]) ??
-        _readNestedString(
-          json['status'],
-          const ['label', 'Label', 'name', 'Name'],
-        ) ??
+        _readNestedString(json['status'], const [
+          'label',
+          'Label',
+          'name',
+          'Name',
+        ]) ??
         _defaultStatusForEventType(eventType);
 
     final activityAtRaw = _readValue(json, const [
@@ -101,11 +137,90 @@ class RecentActivityItem {
       orderId: _parseInt(_readValue(json, const ['orderId', 'OrderId'])),
       ticketId: _parseInt(_readValue(json, const ['ticketId', 'TicketId'])),
       selectionId: _parseInt(
-        _readValue(
-          json,
-          const ['selectionId', 'SelectionId', 'orderSelectionId'],
-        ),
+        _readValue(json, const [
+          'selectionId',
+          'SelectionId',
+          'orderSelectionId',
+        ]),
       ),
+      actorName:
+          _readString(json, const ['actorName', 'ActorName']) ??
+          _readNestedString(json['actor'], const [
+            'name',
+            'Name',
+            'fullName',
+            'FullName',
+            'label',
+            'Label',
+          ]) ??
+          _readNestedString(json['user'], const [
+            'name',
+            'Name',
+            'fullName',
+            'FullName',
+            'label',
+            'Label',
+          ]),
+      selectionSequenceNumber: _parseInt(
+        _readValue(json, const [
+          'selectionSequenceNumber',
+          'SelectionSequenceNumber',
+          'selectionNumber',
+          'SelectionNumber',
+          'sequenceNumber',
+          'SequenceNumber',
+        ]),
+      ),
+      selectionLabel:
+          _readString(json, const ['selectionLabel', 'SelectionLabel']) ??
+          _readNestedString(json['selection'], const [
+            'label',
+            'Label',
+            'name',
+            'Name',
+            'title',
+            'Title',
+          ]),
+      selectionComment:
+          _readString(json, const ['selectionComment', 'SelectionComment']) ??
+          _readNestedString(json['selection'], const [
+            'comment',
+            'Comment',
+            'notes',
+            'Notes',
+          ]),
+      itemsSummary:
+          _readString(json, const ['itemsSummary', 'ItemsSummary']) ??
+          _readNestedString(json['items'], const [
+            'summary',
+            'Summary',
+            'label',
+            'Label',
+          ]),
+      paymentMethod:
+          _readString(json, const ['paymentMethod', 'PaymentMethod']) ??
+          _readNestedString(json['payment'], const [
+            'method',
+            'Method',
+            'label',
+            'Label',
+            'name',
+            'Name',
+          ]),
+      paymentComments:
+          _readString(json, const ['paymentComments', 'PaymentComments']) ??
+          _readNestedString(json['payment'], const [
+            'comments',
+            'Comments',
+            'comment',
+            'Comment',
+            'notes',
+            'Notes',
+          ]),
+      eventGroup:
+          _readString(json, const ['eventGroup', 'EventGroup']) ??
+          _readString(json, const ['group', 'Group', 'category', 'Category']) ??
+          _defaultEventGroupForEventType(eventType),
     );
   }
 
@@ -131,10 +246,14 @@ class RecentActivityItem {
     }
 
     if (value is Map<String, dynamic>) {
-      return _readNestedString(
-        value,
-        const ['label', 'Label', 'name', 'Name', 'value', 'Value'],
-      );
+      return _readNestedString(value, const [
+        'label',
+        'Label',
+        'name',
+        'Name',
+        'value',
+        'Value',
+      ]);
     }
 
     final normalized = value.toString().trim();
@@ -246,6 +365,30 @@ class RecentActivityItem {
     }
   }
 
+  static String _defaultEventGroupForEventType(String value) {
+    switch (value.trim().toLowerCase()) {
+      case 'order_selection_created':
+      case 'order_selection_updated':
+      case 'order_selection_comment_updated':
+      case 'order_selection_cancelled':
+        return 'selection';
+      case 'order_sent_to_kitchen':
+      case 'kitchen_ticket_sent':
+      case 'kitchen_ticket_preparing':
+      case 'kitchen_ticket_ready':
+      case 'kitchen_ticket_status_updated':
+        return 'kitchen';
+      case 'order_opened':
+        return 'table';
+      case 'order_bill_requested':
+        return 'billing';
+      case 'order_paid':
+        return 'payment';
+      default:
+        return '';
+    }
+  }
+
   static String _humanizeEventType(String value) {
     final normalized = value.trim();
     if (normalized.isEmpty) {
@@ -264,4 +407,6 @@ class RecentActivityItem {
 
     return words.join(' ');
   }
+
+  static bool _hasText(String? value) => value?.trim().isNotEmpty ?? false;
 }

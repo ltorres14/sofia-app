@@ -394,9 +394,7 @@ class _OrderViewState extends State<OrderView> {
     AppResponsive responsive,
   ) {
     return SingleChildScrollView(
-      padding: EdgeInsets.only(
-        bottom: responsive.scrollBottomSafePadding,
-      ),
+      padding: EdgeInsets.only(bottom: responsive.scrollBottomSafePadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -826,8 +824,9 @@ class _RecentOrderActivitySection extends StatelessWidget {
     if (items.isNotEmpty) {
       return ListView.separated(
         scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.only(right: responsive.spacingXs),
         itemCount: items.length,
-        separatorBuilder: (_, _) => SizedBox(width: responsive.spacingSm),
+        separatorBuilder: (_, _) => SizedBox(width: responsive.spacingMd),
         itemBuilder: (context, index) {
           return RecentActivityCard(item: items[index], compact: true);
         },

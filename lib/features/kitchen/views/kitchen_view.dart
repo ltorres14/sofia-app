@@ -137,12 +137,11 @@ class _KitchenViewState extends State<KitchenView> {
                                             viewModel.advanceStatus(ticket),
                                         isLegacyActionLoading: viewModel
                                             .isLegacyActionLoading(ticket.id),
-                                        onAdvanceSelectionStatus:
-                                            (selection) => viewModel
-                                                .advanceSelectionStatus(
-                                                  ticket,
-                                                  selection,
-                                                ),
+                                        onAdvanceSelectionStatus: (selection) =>
+                                            viewModel.advanceSelectionStatus(
+                                              ticket,
+                                              selection,
+                                            ),
                                         isSelectionLoading: (selection) =>
                                             viewModel.isSelectionActionLoading(
                                               ticket.id,
@@ -177,7 +176,9 @@ class _KitchenViewState extends State<KitchenView> {
                                   gridDelegate:
                                       SliverGridDelegateWithFixedCrossAxisCount(
                                         crossAxisCount:
-                                            constraints.maxWidth >= 1400 ? 3 : 2,
+                                            constraints.maxWidth >= 1400
+                                            ? 3
+                                            : 2,
                                         crossAxisSpacing: responsive.spacingMd,
                                         mainAxisSpacing: responsive.spacingMd,
                                         mainAxisExtent: 520,
@@ -233,7 +234,7 @@ class _RecentKitchenActivitySection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Últimos movimientos recientes',
+          'Historial reciente',
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w900,
@@ -245,7 +246,7 @@ class _RecentKitchenActivitySection extends StatelessWidget {
           SizedBox(height: responsive.spacingSm),
         ],
         SizedBox(
-          height: 124,
+          height: responsive.recentActivityBodyHeight,
           child: _buildBody(context),
         ),
       ],
@@ -278,13 +279,11 @@ class _RecentKitchenActivitySection extends StatelessWidget {
 
     return ListView.separated(
       scrollDirection: Axis.horizontal,
+      padding: EdgeInsets.only(right: responsive.spacingXs),
       itemCount: items.length,
-      separatorBuilder: (_, _) => SizedBox(width: responsive.spacingSm),
+      separatorBuilder: (_, _) => SizedBox(width: responsive.spacingMd),
       itemBuilder: (context, index) {
-        return RecentActivityCard(
-          item: items[index],
-          compact: true,
-        );
+        return RecentActivityCard(item: items[index], compact: true);
       },
     );
   }
@@ -320,10 +319,7 @@ class _RecentActivityHint extends StatelessWidget {
 }
 
 class _RecentActivityState extends StatelessWidget {
-  const _RecentActivityState({
-    required this.icon,
-    required this.message,
-  });
+  const _RecentActivityState({required this.icon, required this.message});
 
   final IconData icon;
   final String message;

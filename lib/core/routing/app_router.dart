@@ -59,7 +59,7 @@ class AppRouter {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color: AppColors.secondary.withOpacity(.35),
+                          color: AppColors.secondary.withValues(alpha: 0.35),
                         ),
                         boxShadow: const [
                           BoxShadow(

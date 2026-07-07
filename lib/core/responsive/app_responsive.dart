@@ -36,8 +36,10 @@ class AppResponsive {
       math.max(0, screenWidth - (horizontalPadding * 2));
   double get availableHeight =>
       math.max(0, screenHeight - (verticalPadding * 2));
-  double get keyboardAwareAvailableHeight =>
-      math.max(0, screenHeight - safeTopInset - safeBottomInset - viewInsetBottom);
+  double get keyboardAwareAvailableHeight => math.max(
+    0,
+    screenHeight - safeTopInset - safeBottomInset - viewInsetBottom,
+  );
   double get safeContentHeight =>
       math.max(0, screenHeight - safeTopInset - safeBottomInset);
 
@@ -368,8 +370,8 @@ class AppResponsive {
       : (screenWidth * 0.026).clamp(12.0, 16.0);
 
   double get recentActivityBodyHeight => isPortrait
-      ? (screenHeight * 0.19).clamp(168.0, 178.0)
-      : (screenHeight * 0.16).clamp(118.0, 140.0);
+      ? (screenHeight * 0.22).clamp(184.0, 204.0)
+      : (screenHeight * 0.19).clamp(148.0, 168.0);
 
   double get scrollBottomSafePadding => safeBottomInset + spacingLg;
 
@@ -379,5 +381,5 @@ class AppResponsive {
 
   double get landscapeRecentActivitySectionHeight => isPortrait
       ? recentActivityBodyHeight
-      : (screenHeight * 0.28).clamp(180.0, 260.0);
+      : (screenHeight * 0.42).clamp(232.0, 320.0);
 }
