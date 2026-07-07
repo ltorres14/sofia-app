@@ -7,9 +7,11 @@ import 'data/repositories/auth_repository.dart';
 import 'data/repositories/cash_cut_repository.dart';
 import 'data/repositories/kitchen_repository.dart';
 import 'data/repositories/order_repository.dart';
+import 'data/repositories/order_selection_message_repository.dart';
 import 'data/repositories/payment_repository.dart';
 import 'data/repositories/product_repository.dart';
 import 'data/repositories/table_repository.dart';
+import 'data/services/kitchen_realtime_service.dart';
 import 'features/auth/viewmodels/pin_login_view_model.dart';
 import 'features/cash_cut/viewmodels/cash_cut_view_model.dart';
 import 'features/cash_cut/viewmodels/today_sales_view_model.dart';
@@ -30,8 +32,10 @@ class SofiaApp extends StatelessWidget {
         Provider(create: (_) => ProductRepository()),
         Provider(create: (_) => OrderRepository()),
         Provider(create: (_) => KitchenRepository()),
+        Provider(create: (_) => OrderSelectionMessageRepository()),
         Provider(create: (_) => PaymentRepository()),
         Provider(create: (_) => CashCutRepository()),
+        Provider(create: (_) => KitchenRealtimeService()),
         ChangeNotifierProvider(
           create: (context) =>
               PinLoginViewModel(authRepository: context.read<AuthRepository>()),
@@ -54,6 +58,10 @@ class SofiaApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) => KitchenViewModel(
             kitchenRepository: context.read<KitchenRepository>(),
+            orderSelectionMessageRepository: context
+                .read<OrderSelectionMessageRepository>(),
+            authRepository: context.read<AuthRepository>(),
+            kitchenRealtimeService: context.read<KitchenRealtimeService>(),
           ),
         ),
         ChangeNotifierProvider(

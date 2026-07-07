@@ -6,6 +6,7 @@ import '../../../core/utils/date_time_formatter.dart';
 import '../../../data/models/kitchen/kitchen_ticket.dart';
 import '../../../data/models/kitchen/kitchen_ticket_item.dart';
 import '../../../data/models/kitchen/kitchen_ticket_selection.dart';
+import '../../../data/models/messages/order_selection_message.dart';
 
 class KitchenTicketCard extends StatelessWidget {
   const KitchenTicketCard({
@@ -15,6 +16,9 @@ class KitchenTicketCard extends StatelessWidget {
     required this.isLegacyActionLoading,
     required this.onAdvanceSelectionStatus,
     required this.isSelectionLoading,
+    required this.unreadCountForSelection,
+    required this.latestUnreadMessageForSelection,
+    required this.onViewSelectionMessages,
   });
 
   final KitchenTicket ticket;
@@ -23,6 +27,10 @@ class KitchenTicketCard extends StatelessWidget {
   final Future<void> Function(KitchenTicketSelection selection)
   onAdvanceSelectionStatus;
   final bool Function(KitchenTicketSelection selection) isSelectionLoading;
+  final int Function(KitchenTicketSelection selection) unreadCountForSelection;
+  final OrderSelectionMessage? Function(KitchenTicketSelection selection)
+  latestUnreadMessageForSelection;
+  final void Function(KitchenTicketSelection selection) onViewSelectionMessages;
 
   @override
   Widget build(BuildContext context) {
@@ -123,6 +131,9 @@ class KitchenTicketCard extends StatelessWidget {
           onAdvanceSelectionStatus: onAdvanceSelectionStatus,
           itemListBuilder: (items) =>
               _buildSelectionItemList(context, items, responsive),
+          unreadCount: unreadCountForSelection(selection),
+          latestUnreadMessage: latestUnreadMessageForSelection(selection),
+          onViewSelectionMessages: onViewSelectionMessages,
         ),
         SizedBox(height: responsive.spacingSm),
       ],
@@ -200,6 +211,9 @@ class _SelectionCard extends StatelessWidget {
     required this.selectionLoading,
     required this.onAdvanceSelectionStatus,
     required this.itemListBuilder,
+    required this.unreadCount,
+    required this.latestUnreadMessage,
+    required this.onViewSelectionMessages,
   });
 
   final KitchenTicketSelection selection;
@@ -209,6 +223,9 @@ class _SelectionCard extends StatelessWidget {
   final Future<void> Function(KitchenTicketSelection selection)
   onAdvanceSelectionStatus;
   final List<Widget> Function(List<KitchenTicketItem> items) itemListBuilder;
+  final int unreadCount;
+  final OrderSelectionMessage? latestUnreadMessage;
+  final void Function(KitchenTicketSelection selection) onViewSelectionMessages;
 
   @override
   Widget build(BuildContext context) {
@@ -220,7 +237,11 @@ class _SelectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.softBackground,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(
+          color: unreadCount > 0
+              ? AppColors.danger.withValues(alpha: 0.28)
+              : AppColors.border,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,15 +250,24 @@ class _SelectionCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(
-                  selection.label.isNotEmpty
-                      ? selection.label
-                      : 'Selección ${selection.sequenceNumber}',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontSize: responsive.orderBodyFontSize,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textPrimary,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      selection.label.isNotEmpty
+                          ? selection.label
+                          : 'Selección ${selection.sequenceNumber}',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontSize: responsive.orderBodyFontSize,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    if (unreadCount > 0) ...[
+                      SizedBox(height: responsive.spacingXs),
+                      _UnreadBadge(count: unreadCount),
+                    ],
+                  ],
                 ),
               ),
               SizedBox(width: responsive.spacingSm),
@@ -261,10 +291,30 @@ class _SelectionCard extends StatelessWidget {
               ),
             ),
           ],
+          if (latestUnreadMessage != null) ...[
+            SizedBox(height: responsive.spacingSm),
+            _UnreadMessagePreview(
+              message: latestUnreadMessage!,
+              responsive: responsive,
+              theme: theme,
+            ),
+          ],
           SizedBox(height: responsive.spacingSm),
           ...itemListBuilder(selection.items),
+          SizedBox(height: responsive.spacingXs),
+          TextButton.icon(
+            onPressed: () => onViewSelectionMessages(selection),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              padding: EdgeInsets.zero,
+              minimumSize: const Size(0, 0),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: const Icon(Icons.forum_rounded, size: 18),
+            label: const Text('Ver historial'),
+          ),
           if (selection.status < 3) ...[
-            SizedBox(height: responsive.spacingXs),
+            SizedBox(height: responsive.spacingSm),
             _ActionButton(
               label: selection.status == 1
                   ? 'Marcar preparando'
@@ -278,6 +328,108 @@ class _SelectionCard extends StatelessWidget {
                       onAdvanceSelectionStatus(selection);
                     },
               loading: selectionLoading,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _UnreadBadge extends StatelessWidget {
+  const _UnreadBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.danger,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$count pendiente${count == 1 ? '' : 's'}',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: AppColors.white,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _UnreadMessagePreview extends StatelessWidget {
+  const _UnreadMessagePreview({
+    required this.message,
+    required this.responsive,
+    required this.theme,
+  });
+
+  final OrderSelectionMessage message;
+  final AppResponsive responsive;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(responsive.spacingSm),
+      decoration: BoxDecoration(
+        color: AppColors.danger.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.danger.withValues(alpha: 0.16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: AppColors.danger,
+                size: 18,
+              ),
+              SizedBox(width: responsive.spacingXs),
+              Expanded(
+                child: Text(
+                  message.previewTitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (message.previousMessageText != null) ...[
+            SizedBox(height: responsive.spacingXs),
+            Text(
+              'Antes: ${message.previousMessageText}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          if (message.newMessageText != null) ...[
+            SizedBox(height: 2),
+            Text(
+              'Ahora: ${message.newMessageText}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ] else if (!message.isCommentUpdated) ...[
+            SizedBox(height: responsive.spacingXs),
+            Text(
+              message.messageText,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ],

@@ -15,6 +15,7 @@ dependencies:
   google_fonts: ^6.3.2
   intl: ^0.20.2
   provider: ^6.1.5
+  signalr_netcore: ^1.4.4
 
 dev_dependencies:
   flutter_test:

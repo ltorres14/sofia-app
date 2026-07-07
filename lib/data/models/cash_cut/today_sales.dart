@@ -80,6 +80,7 @@ class TodaySale {
     required this.paidAt,
     required this.cashierName,
     required this.orderStatus,
+    required this.selections,
   });
 
   final int paymentId;
@@ -93,6 +94,9 @@ class TodaySale {
   final DateTime paidAt;
   final String? cashierName;
   final String orderStatus;
+  final List<TodaySaleSelection> selections;
+
+  bool get hasDetailAvailable => selections.isNotEmpty;
 
   String get paymentMethodLabel {
     switch (paymentMethod.trim().toLowerCase()) {
@@ -136,7 +140,158 @@ class TodaySale {
         DateTime.tryParse(json['paidAt']?.toString() ?? '') ?? DateTime.now(),
     cashierName: json['cashierName']?.toString(),
     orderStatus: json['orderStatus']?.toString() ?? '',
+    selections: _readSelections(json),
   );
+}
+
+class TodaySaleSelection {
+  TodaySaleSelection({
+    required this.selectionId,
+    required this.sequenceNumber,
+    required this.label,
+    required this.comment,
+    required this.total,
+    required this.items,
+  });
+
+  final int selectionId;
+  final int sequenceNumber;
+  final String label;
+  final String? comment;
+  final double total;
+  final List<TodaySaleSelectionItem> items;
+
+  String get displayLabel {
+    final normalizedLabel = label.trim();
+    if (normalizedLabel.isNotEmpty) {
+      return normalizedLabel;
+    }
+
+    if (sequenceNumber > 0) {
+      return 'Seleccion $sequenceNumber';
+    }
+
+    return 'Seleccion';
+  }
+
+  String get displayComment => comment?.trim() ?? '';
+
+  List<TodaySaleSelectionItem> get visibleItems =>
+      items.where((item) => item.quantity > 0).toList(growable: false);
+
+  factory TodaySaleSelection.fromJson(Map<String, dynamic> json) {
+    final items = _readSelectionItems(json);
+
+    return TodaySaleSelection(
+      selectionId: _asInt(json['selectionId'] ?? json['id']),
+      sequenceNumber: _asInt(
+        json['sequenceNumber'] ??
+            json['selectionSequenceNumber'] ??
+            json['sequence'],
+      ),
+      label: _asString(
+        json['label'] ?? json['selectionLabel'] ?? json['title'],
+      ),
+      comment: _firstNonEmptyString([
+        json['comment'],
+        json['notes'],
+        json['selectionComment'],
+      ]),
+      total: _asDouble(
+        json['total'] ??
+            json['selectionTotal'] ??
+            items.fold<double>(0, (sum, item) => sum + item.total),
+      ),
+      items: items,
+    );
+  }
+}
+
+class TodaySaleSelectionItem {
+  TodaySaleSelectionItem({
+    required this.productId,
+    required this.productName,
+    required this.quantity,
+    required this.unitPrice,
+    required this.total,
+    required this.role,
+    required this.imageName,
+    required this.sortOrder,
+  });
+
+  static const int mainRole = 1;
+  static const int beverageRole = 2;
+  static const int extraRole = 3;
+
+  final int productId;
+  final String productName;
+  final int quantity;
+  final double unitPrice;
+  final double total;
+  final int role;
+  final String? imageName;
+  final int sortOrder;
+
+  String get displayName {
+    final normalized = productName.trim();
+    return normalized.isEmpty ? 'Producto no disponible' : normalized;
+  }
+
+  String get roleLabel {
+    switch (role) {
+      case beverageRole:
+        return 'Bebida';
+      case extraRole:
+        return 'Extra';
+      case mainRole:
+      default:
+        return 'Platillo principal';
+    }
+  }
+
+  factory TodaySaleSelectionItem.fromJson(Map<String, dynamic> json) =>
+      TodaySaleSelectionItem(
+        productId: _asInt(json['productId'] ?? json['id']),
+        productName: _asString(
+          json['productName'] ?? json['name'] ?? json['label'],
+        ),
+        quantity: _asInt(json['quantity']),
+        unitPrice: _asDouble(json['unitPrice'] ?? json['price']),
+        total: _asDouble(json['total']),
+        role: _parseRole(json['role']),
+        imageName: _normalizedNullableString(
+          json['imageName'] ?? json['image'] ?? json['productImageName'],
+        ),
+        sortOrder: _asInt(json['sortOrder'] ?? json['roleOrder']),
+      );
+}
+
+List<TodaySaleSelection> _readSelections(Map<String, dynamic> json) {
+  final order = _asMap(json['order']);
+  final rawSelections =
+      json['selections'] ?? json['orderSelections'] ?? order?['selections'];
+
+  if (rawSelections is! List<dynamic>) {
+    return const [];
+  }
+
+  return rawSelections
+      .whereType<Map<String, dynamic>>()
+      .map(TodaySaleSelection.fromJson)
+      .toList(growable: false);
+}
+
+List<TodaySaleSelectionItem> _readSelectionItems(Map<String, dynamic> json) {
+  final rawItems = json['items'] ?? json['selectionItems'];
+  if (rawItems is! List<dynamic>) {
+    return const [];
+  }
+
+  return rawItems
+      .whereType<Map<String, dynamic>>()
+      .map(TodaySaleSelectionItem.fromJson)
+      .toList(growable: false)
+    ..sort((left, right) => left.sortOrder.compareTo(right.sortOrder));
 }
 
 double _asDouble(Object? value) {
@@ -177,4 +332,59 @@ int? _asNullableInt(Object? value) {
   }
 
   return int.tryParse(value.toString());
+}
+
+String _asString(Object? value) => value?.toString() ?? '';
+
+String? _normalizedNullableString(Object? value) {
+  final normalized = value?.toString().trim() ?? '';
+  return normalized.isEmpty ? null : normalized;
+}
+
+String? _firstNonEmptyString(List<Object?> values) {
+  for (final value in values) {
+    final normalized = value?.toString().trim() ?? '';
+    if (normalized.isNotEmpty) {
+      return normalized;
+    }
+  }
+
+  return null;
+}
+
+Map<String, dynamic>? _asMap(Object? value) {
+  if (value is Map<String, dynamic>) {
+    return value;
+  }
+
+  return null;
+}
+
+int _parseRole(Object? value) {
+  if (value is num) {
+    final role = value.toInt();
+    if (role >= TodaySaleSelectionItem.mainRole &&
+        role <= TodaySaleSelectionItem.extraRole) {
+      return role;
+    }
+  }
+
+  final normalized = value?.toString().trim().toLowerCase() ?? '';
+  switch (normalized) {
+    case '1':
+    case 'main':
+    case 'principal':
+    case 'platillo':
+    case 'platillo principal':
+      return TodaySaleSelectionItem.mainRole;
+    case '2':
+    case 'beverage':
+    case 'drink':
+    case 'bebida':
+      return TodaySaleSelectionItem.beverageRole;
+    case '3':
+    case 'extra':
+    default:
+      return TodaySaleSelectionItem.extraRole;
+  }
 }

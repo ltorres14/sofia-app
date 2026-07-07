@@ -8,6 +8,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/cash_cut/today_sales.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../viewmodels/today_sales_view_model.dart';
+import '../widgets/sale_detail_sheet.dart';
 
 class TodaySalesView extends StatefulWidget {
   const TodaySalesView({super.key});
@@ -23,6 +24,26 @@ class _TodaySalesViewState extends State<TodaySalesView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TodaySalesViewModel>().load();
     });
+  }
+
+  Future<void> _showSaleDetail(TodaySale sale) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        final sheetResponsive = AppResponsive.of(sheetContext);
+
+        return FractionallySizedBox(
+          heightFactor: sheetResponsive.isPortrait ? 0.92 : 0.94,
+          child: SaleDetailSheet(sale: sale),
+        );
+      },
+    );
   }
 
   @override
@@ -153,7 +174,9 @@ class _TodaySalesViewState extends State<TodaySalesView> {
               if (report.sales.isEmpty)
                 const _EmptySalesCard()
               else
-                ...report.sales.map(_SaleCard.new),
+                ...report.sales.map(
+                  (sale) => _SaleCard(sale, onTap: () => _showSaleDetail(sale)),
+                ),
             ],
           ),
         );
@@ -422,9 +445,10 @@ class _StatTile extends StatelessWidget {
 }
 
 class _SaleCard extends StatelessWidget {
-  const _SaleCard(this.sale);
+  const _SaleCard(this.sale, {required this.onTap});
 
   final TodaySale sale;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -432,68 +456,87 @@ class _SaleCard extends StatelessWidget {
     final cashierName = sale.cashierName?.trim() ?? '';
     final subtitle = cashierName.isEmpty
         ? _formatTime(sale.paidAt)
-        : '${_formatTime(sale.paidAt)} · $cashierName';
+        : '${_formatTime(sale.paidAt)} - $cashierName';
     final methodVisual = _paymentMethodVisual(sale.paymentMethod);
 
     return Padding(
       padding: EdgeInsets.only(bottom: responsive.spacingSm),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AppColors.white,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              sale.displayTableName,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w900,
-              ),
+          child: Ink(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border),
             ),
-            const SizedBox(height: 8),
-            Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  CurrencyFormatter.format(sale.total),
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Text(
-                  ' · ',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                Icon(methodVisual.icon, size: 16, color: AppColors.primary),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    methodVisual.label,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w800,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        sale.displayTableName,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
                     ),
+                    const SizedBox(width: 12),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppColors.textSecondary,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      CurrencyFormatter.format(sale.total),
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      ' - ',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Icon(methodVisual.icon, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        methodVisual.label,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -178,7 +178,13 @@ class PaymentViewModel extends ChangeNotifier {
 
     try {
       lastPayment = await _paymentRepository.payOrder(request);
-      successMessage = 'Pago registrado para la orden #${order.id}.';
+      final tableName = order.tableName.trim();
+      final tableLabel = tableName.isNotEmpty
+          ? tableName
+          : (order.tableId > 0 ? 'Mesa ${order.tableId}' : '');
+      successMessage = tableLabel.isNotEmpty
+          ? 'Pago registrado para $tableLabel · Orden #${order.id}'
+          : 'Pago registrado para la orden #${order.id}';
       _resetPaymentForm();
       await _refreshCashCutSummary();
     } catch (error, stackTrace) {
