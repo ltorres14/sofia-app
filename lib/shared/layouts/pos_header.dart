@@ -9,11 +9,13 @@ class PosHeader extends StatelessWidget {
     super.key,
     required this.title,
     required this.subtitle,
+    this.leading,
     this.trailing,
   });
 
   final String title;
   final String subtitle;
+  final Widget? leading;
   final Widget? trailing;
 
   @override
@@ -22,6 +24,10 @@ class PosHeader extends StatelessWidget {
 
     return Row(
       children: [
+        if (leading != null) ...[
+          leading!,
+          SizedBox(width: responsive.spacingMd),
+        ],
         SizedBox(
           width: responsive.isPortrait ? 48 : 56,
           height: responsive.isPortrait ? 48 : 56,

@@ -66,6 +66,13 @@ class OrderViewModel extends ChangeNotifier {
   String? actionErrorMessage;
   String? recentActivityErrorMessage;
 
+  void _debugLog(String message) {
+    assert(() {
+      debugPrint('[OrderViewModel] $message');
+      return true;
+    }());
+  }
+
   bool get isSendingToKitchen => isSending;
 
   List<String> get categories => const [
@@ -75,11 +82,13 @@ class OrderViewModel extends ChangeNotifier {
     extrasCategory,
   ];
 
-  List<OrderSelection> get visibleSelections =>
+  List<OrderSelection> get currentSelections =>
       List<OrderSelection>.unmodifiable([
         ..._activeSelectionsFromOrder(order),
         ..._draftSelections.where(_isVisibleSelection),
       ]);
+
+  List<OrderSelection> get visibleSelections => currentSelections;
 
   List<OrderSelection> get localDraftSelections =>
       List<OrderSelection>.unmodifiable(
@@ -87,16 +96,23 @@ class OrderViewModel extends ChangeNotifier {
       );
 
   bool get hasPendingItemsToSend {
-    if (localDraftSelections.isNotEmpty) {
+    final result =
+        currentSelections.any(_isSendableSelection) ||
+        (order?.items.any((item) => item.quantity > 0) ?? false);
+    _debugLog(
+      'hasPendingItemsToSend=$result, '
+      'currentSelections=${currentSelections.length}, '
+      'isSending=$isSending',
+    );
+    if (result) {
       return true;
     }
-
-    return order?.items.any((item) => item.quantity > 0) ?? false;
+    return false;
   }
 
   double get visibleTotal {
-    if (visibleSelections.isNotEmpty) {
-      return visibleSelections.fold<double>(
+    if (currentSelections.isNotEmpty) {
+      return currentSelections.fold<double>(
         0,
         (sum, selection) => sum + selection.total,
       );
@@ -108,29 +124,15 @@ class OrderViewModel extends ChangeNotifier {
   }
 
   int get visibleItemCount {
-    if (visibleSelections.isNotEmpty) {
-      final totalQuantity = visibleSelections.fold<int>(
-        0,
-        (sum, selection) =>
-            sum +
-            selection.items.fold<int>(
-              0,
-              (itemSum, item) => itemSum + item.quantity,
-            ),
-      );
-
-      if (totalQuantity > 0) {
-        return totalQuantity;
-      }
-
-      return visibleSelections.length;
+    if (currentSelections.isNotEmpty) {
+      return currentSelections.length;
     }
 
     return order?.items.fold<int>(0, (sum, item) => sum + item.quantity) ?? 0;
   }
 
   OrderSelection? selectionById(int selectionId) {
-    for (final selection in visibleSelections) {
+    for (final selection in currentSelections) {
       if (selection.id == selectionId) {
         return selection;
       }
@@ -379,7 +381,7 @@ class OrderViewModel extends ChangeNotifier {
           quantity: quantity,
           complements: complements,
           comment: comment.trim(),
-          sequenceNumber: visibleSelections.length + 1,
+          sequenceNumber: currentSelections.length + 1,
         ),
       ];
 
@@ -557,27 +559,63 @@ class OrderViewModel extends ChangeNotifier {
 
   Future<bool> sendToKitchen() async {
     final currentOrder = order;
-    final draftSelectionsToSend = localDraftSelections
-        .where((selection) => selection.items.any((item) => item.quantity > 0))
+    final sendableSelections = currentSelections
+        .where(_isSendableSelection)
         .toList();
+    final draftSelectionsToSend = sendableSelections
+        .where((selection) => selection.isLocalDraft)
+        .toList();
+    final hasRemoteDraftSelections = sendableSelections.any(
+      (selection) => !selection.isLocalDraft,
+    );
     final hasLegacyItems =
         currentOrder?.items.any((item) => item.quantity > 0) ?? false;
 
-    if (currentOrder == null || currentOrder.id <= 0 || isSending) {
+    _debugLog(
+      'sendToKitchen start: '
+      'currentSelections=${currentSelections.length}, '
+      'sendableSelections=${sendableSelections.length}, '
+      'localDrafts=${draftSelectionsToSend.length}, '
+      'remoteDrafts=$hasRemoteDraftSelections, '
+      'legacyItems=$hasLegacyItems, '
+      'isSending=$isSending',
+    );
+
+    if (isSending) {
+      _debugLog(
+        'sendToKitchen abortado: '
+        'orderId=${order?.id}, isSending=$isSending',
+      );
       return false;
     }
 
-    if (draftSelectionsToSend.isEmpty && !hasLegacyItems) {
+    if (draftSelectionsToSend.isEmpty &&
+        !hasRemoteDraftSelections &&
+        !hasLegacyItems) {
       actionErrorMessage = 'No hay productos para enviar a cocina.';
+      _debugLog('sendToKitchen abortado: no hay productos enviables.');
       notifyListeners();
       return false;
     }
 
     isSending = true;
     actionErrorMessage = null;
+    _debugLog('sendToKitchen marcado como en progreso.');
     notifyListeners();
 
     try {
+      if ((order == null || order!.id <= 0) &&
+          draftSelectionsToSend.isNotEmpty) {
+        await _ensurePersistedOrderForCurrentTable();
+      }
+
+      final currentOrder = order;
+      if (currentOrder == null || currentOrder.id <= 0) {
+        throw Exception(
+          'No se pudo crear o recuperar la orden antes de enviar a cocina.',
+        );
+      }
+
       if (draftSelectionsToSend.isNotEmpty) {
         await _persistDraftSelectionsForSend(draftSelectionsToSend);
       }
@@ -585,12 +623,15 @@ class OrderViewModel extends ChangeNotifier {
       await _orderRepository.sendToKitchen(currentOrder.id);
       _clearCurrentDrafts();
       await refreshCurrentTableOrder();
+      _debugLog('sendToKitchen completado con exito.');
       return true;
     } catch (error) {
+      _debugLog('sendToKitchen fallo: $error');
       await _handleActionError(error);
       return false;
     } finally {
       isSending = false;
+      _debugLog('sendToKitchen finalizado. isSending=false.');
       notifyListeners();
     }
   }
@@ -834,8 +875,38 @@ class OrderViewModel extends ChangeNotifier {
       throw Exception('No hay usuario autenticado.');
     }
 
-    await _tableRepository.openTable(tableId, userId);
+    try {
+      await _tableRepository.openTable(tableId, userId);
+    } on ApiException catch (error) {
+      if (error.statusCode == 500) {
+        final recoveredOrder = await _orderRepository.getOpenOrderByTable(
+          tableId,
+        );
+        if (recoveredOrder != null) {
+          order = recoveredOrder;
+          return;
+        }
+      }
+      rethrow;
+    }
+
     order = await _orderRepository.getOpenOrderByTable(tableId);
+  }
+
+  Future<void> _ensurePersistedOrderForCurrentTable() async {
+    final tableId = _currentTableId;
+    if (tableId == null) {
+      throw Exception('No se encontro la mesa actual.');
+    }
+
+    _debugLog('Asegurando orden persistida para mesa $tableId.');
+    await _loadOrCreateOrder(tableId);
+
+    if (order == null || order!.id <= 0) {
+      throw Exception('No se pudo crear o recuperar la orden de la mesa.');
+    }
+
+    _debugLog('Orden persistida disponible con orderId=${order!.id}.');
   }
 
   Future<void> _persistDraftSelectionsForSend(
@@ -874,6 +945,12 @@ class OrderViewModel extends ChangeNotifier {
 
   bool _isVisibleSelection(OrderSelection selection) {
     return !selection.isCancelled && selection.hasVisibleItems;
+  }
+
+  bool _isSendableSelection(OrderSelection selection) {
+    return _isVisibleSelection(selection) &&
+        selection.isDraft &&
+        selection.items.any((item) => item.quantity > 0);
   }
 
   List<OrderSelection> _activeSelectionsFromOrder(Order? sourceOrder) {

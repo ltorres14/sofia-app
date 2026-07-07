@@ -32,6 +32,13 @@ class _OrderViewState extends State<OrderView> {
   bool _isSelectionSheetOpen = false;
   String? _lastActionError;
 
+  void _debugLog(String message) {
+    assert(() {
+      debugPrint('[OrderView] $message');
+      return true;
+    }());
+  }
+
   Future<void> _showOrderDetails(
     BuildContext context,
     OrderViewModel viewModel,
@@ -51,7 +58,12 @@ class _OrderViewState extends State<OrderView> {
         return Builder(
           builder: (panelContext) => Consumer<OrderViewModel>(
             builder: (consumerContext, liveViewModel, child) {
-              final selections = liveViewModel.visibleSelections;
+              final selections = liveViewModel.currentSelections;
+              _debugLog(
+                'Render panel: currentSelections=${selections.length}, '
+                'canSend=${liveViewModel.hasPendingItemsToSend}, '
+                'isSending=${liveViewModel.isSendingToKitchen}',
+              );
 
               return FractionallySizedBox(
                 heightFactor: sheetResponsive.isPortrait ? 0.88 : 0.94,
@@ -70,11 +82,24 @@ class _OrderViewState extends State<OrderView> {
                   statusLabelForSelection:
                       liveViewModel.statusLabelForSelection,
                   onSendToKitchen: () async {
-                    if (liveViewModel.isSendingToKitchen) return;
+                    _debugLog(
+                      'onSendToKitchen invoked: '
+                      'canSend=${liveViewModel.hasPendingItemsToSend}, '
+                      'isSending=${liveViewModel.isSendingToKitchen}, '
+                      'currentSelections=${liveViewModel.currentSelections.length}',
+                    );
+
+                    if (liveViewModel.isSendingToKitchen) {
+                      _debugLog('onSendToKitchen ignorado por envio en curso.');
+                      return false;
+                    }
+
                     final success = await liveViewModel.sendToKitchen();
-                    if (!success) return;
-                    if (!sheetContext.mounted) return;
+                    _debugLog('sendToKitchen finalizo con success=$success.');
+                    if (!success) return false;
+                    if (!sheetContext.mounted) return true;
                     Navigator.of(sheetContext).pop();
+                    return true;
                   },
                   onEditSelection: (selection) => _showEditSelectionDetail(
                     panelContext,

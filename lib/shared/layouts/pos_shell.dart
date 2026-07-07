@@ -18,6 +18,7 @@ class PosShell extends StatelessWidget {
     required this.subtitle,
     required this.child,
     required this.currentRoute,
+    this.leading,
     this.trailing,
   });
 
@@ -25,6 +26,7 @@ class PosShell extends StatelessWidget {
   final String subtitle;
   final Widget child;
   final String currentRoute;
+  final Widget? leading;
   final Widget? trailing;
 
   @override
@@ -65,6 +67,7 @@ class PosShell extends StatelessWidget {
                       PosHeader(
                         title: BusinessConfig.current.businessName,
                         subtitle: subtitle,
+                        leading: leading,
                         trailing: trailing,
                       ),
                       SizedBox(height: responsive.sectionGap),

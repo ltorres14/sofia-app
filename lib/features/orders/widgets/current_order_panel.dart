@@ -35,7 +35,7 @@ class CurrentOrderPanel extends StatefulWidget {
   final double visibleTotal;
   final int visibleItemCount;
   final String tableName;
-  final Future<void> Function() onSendToKitchen;
+  final Future<bool> Function() onSendToKitchen;
   final Future<void> Function(OrderSelection selection) onEditSelection;
   final Future<bool> Function(OrderSelection selection, String comment)
   onSaveSelectionComment;
@@ -55,20 +55,48 @@ class CurrentOrderPanel extends StatefulWidget {
 class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
   bool _isSending = false;
 
+  void _debugLog(String message) {
+    assert(() {
+      debugPrint('[CurrentOrderPanel] $message');
+      return true;
+    }());
+  }
+
   Future<void> _handleSendToKitchen() async {
-    if (_isSending || widget.sending) return;
+    _debugLog(
+      'Tap enviar: canSend=${widget.canSendToKitchen}, '
+      'widgetSending=${widget.sending}, localSending=$_isSending, '
+      'visibleSelections=${widget.visibleSelections.length}',
+    );
+
+    if (_isSending || widget.sending || !widget.canSendToKitchen) {
+      _debugLog('Envio bloqueado antes de iniciar.');
+      return;
+    }
 
     setState(() {
       _isSending = true;
     });
+    _debugLog('Spinner local activado.');
 
     try {
-      await widget.onSendToKitchen();
+      final success = await widget.onSendToKitchen();
+      _debugLog('Callback onSendToKitchen completado con success=$success.');
+
+      if (!mounted) return;
+      if (!success) {
+        setState(() {
+          _isSending = false;
+        });
+        _debugLog('Envio sin exito. Boton restaurado.');
+        return;
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _isSending = false;
       });
+      _debugLog('Excepcion en el callback. Boton restaurado.');
       rethrow;
     }
 
@@ -76,6 +104,7 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
     setState(() {
       _isSending = false;
     });
+    _debugLog('Envio exitoso. Estado local restablecido.');
   }
 
   @override
@@ -87,12 +116,10 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
     final order = widget.order;
     final isSending = widget.sending || _isSending;
     final legacyItems = order?.items ?? const [];
-    final itemCount = widget.visibleItemCount > 0
+    final itemCount = hasSelections
         ? widget.visibleItemCount
-        : hasSelections
-        ? selections.length
         : legacyItems.fold<int>(0, (sum, item) => sum + item.quantity);
-    final computedTotal = widget.visibleTotal > 0
+    final computedTotal = hasSelections
         ? widget.visibleTotal
         : (order?.total ??
               legacyItems.fold<double>(0, (sum, item) => sum + item.total));
@@ -100,6 +127,7 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
     final hasOrderSummary = itemCount > 0 || computedTotal > 0;
     final showPendingSyncState =
         !hasSelections && legacyItems.isEmpty && hasOrderSummary;
+    final shouldShowEmptyState = !hasSelections && legacyItems.isEmpty;
 
     return SafeArea(
       child: Padding(
@@ -211,7 +239,7 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
                   ),
                   border: Border.all(color: AppColors.border),
                 ),
-                child: order == null || (!hasSelections && legacyItems.isEmpty)
+                child: shouldShowEmptyState
                     ? Center(
                         child: Text(
                           showPendingSyncState
