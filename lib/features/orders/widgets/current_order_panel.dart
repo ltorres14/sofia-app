@@ -18,12 +18,16 @@ class CurrentOrderPanel extends StatefulWidget {
     required this.visibleItemCount,
     required this.tableName,
     required this.onSendToKitchen,
+    required this.onSendToPayment,
     required this.onEditSelection,
     required this.onSaveSelectionComment,
     required this.onDeleteSelection,
     required this.resolveProductById,
     required this.sending,
+    required this.requestingPayment,
+    required this.isWaitingPayment,
     required this.canSendToKitchen,
+    required this.canSendToPayment,
     required this.canEditSelection,
     required this.canEditSelectionComment,
     required this.canDeleteSelection,
@@ -36,13 +40,17 @@ class CurrentOrderPanel extends StatefulWidget {
   final int visibleItemCount;
   final String tableName;
   final Future<bool> Function() onSendToKitchen;
+  final Future<bool> Function() onSendToPayment;
   final Future<void> Function(OrderSelection selection) onEditSelection;
   final Future<bool> Function(OrderSelection selection, String comment)
   onSaveSelectionComment;
   final Future<void> Function(OrderSelection selection) onDeleteSelection;
   final Product? Function(int productId) resolveProductById;
   final bool sending;
+  final bool requestingPayment;
+  final bool isWaitingPayment;
   final bool canSendToKitchen;
+  final bool canSendToPayment;
   final bool Function(OrderSelection selection) canEditSelection;
   final bool Function(OrderSelection selection) canEditSelectionComment;
   final bool Function(OrderSelection selection) canDeleteSelection;
@@ -54,6 +62,7 @@ class CurrentOrderPanel extends StatefulWidget {
 
 class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
   bool _isSending = false;
+  bool _isRequestingPayment = false;
 
   void _debugLog(String message) {
     assert(() {
@@ -107,6 +116,57 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
     _debugLog('Envio exitoso. Estado local restablecido.');
   }
 
+  Future<void> _handleSendToPayment() async {
+    if (_isRequestingPayment || widget.requestingPayment) {
+      return;
+    }
+
+    if (!widget.canSendToPayment) {
+      await widget.onSendToPayment();
+      return;
+    }
+
+    final confirmed = await _showSendToPaymentConfirmation();
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _isRequestingPayment = true;
+    });
+
+    try {
+      final success = await widget.onSendToPayment();
+      if (!mounted) {
+        return;
+      }
+
+      if (!success) {
+        setState(() {
+          _isRequestingPayment = false;
+        });
+        return;
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isRequestingPayment = false;
+      });
+      rethrow;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isRequestingPayment = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -115,6 +175,8 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
     final hasSelections = selections.isNotEmpty;
     final order = widget.order;
     final isSending = widget.sending || _isSending;
+    final isRequestingPayment =
+        widget.requestingPayment || _isRequestingPayment;
     final legacyItems = order?.items ?? const [];
     final itemCount = hasSelections
         ? widget.visibleItemCount
@@ -128,6 +190,10 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
     final showPendingSyncState =
         !hasSelections && legacyItems.isEmpty && hasOrderSummary;
     final shouldShowEmptyState = !hasSelections && legacyItems.isEmpty;
+    final showSendToPaymentAction =
+        !widget.isWaitingPayment && !hasItemsToSend && hasOrderSummary;
+    final showSendToKitchenAction = !widget.isWaitingPayment && hasItemsToSend;
+    final isPrimaryActionLoading = isSending || isRequestingPayment;
 
     return SafeArea(
       child: Padding(
@@ -343,57 +409,100 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
                     ],
                   ),
                   SizedBox(height: responsive.spacingMd),
-                  SizedBox(
-                    height: responsive.orderActionButtonHeight,
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: isSending || !hasItemsToSend
-                          ? null
-                          : _handleSendToKitchen,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.white,
-                        disabledBackgroundColor: AppColors.primary.withValues(
-                          alpha: 0.55,
-                        ),
-                        disabledForegroundColor: AppColors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        textStyle: TextStyle(
-                          fontSize: responsive.orderBodyFontSize.clamp(
-                            15.0,
-                            17.0,
-                          ),
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      child: isSending
-                          ? Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.2,
-                                    valueColor: const AlwaysStoppedAnimation(
-                                      AppColors.white,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: responsive.spacingSm),
-                                const Text('Enviando...'),
-                              ],
-                            )
-                          : const Text('Enviar a Cocina'),
+                  if (widget.isWaitingPayment)
+                    _WaitingPaymentState(responsive: responsive)
+                  else if (showSendToKitchenAction)
+                    _buildPrimaryActionButton(
+                      responsive: responsive,
+                      loading: isPrimaryActionLoading,
+                      onPressed: _handleSendToKitchen,
+                      label: 'Enviar a Cocina',
+                    )
+                  else if (showSendToPaymentAction)
+                    _buildPrimaryActionButton(
+                      responsive: responsive,
+                      loading: isPrimaryActionLoading,
+                      onPressed: _handleSendToPayment,
+                      label: 'Mandar a cobrar',
+                      enabled: widget.canSendToPayment,
+                    )
+                  else
+                    _buildPrimaryActionButton(
+                      responsive: responsive,
+                      loading: false,
+                      onPressed: null,
+                      label: 'Enviar a Cocina',
+                      enabled: false,
                     ),
-                  ),
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPrimaryActionButton({
+    required AppResponsive responsive,
+    required bool loading,
+    required VoidCallback? onPressed,
+    required String label,
+    bool enabled = true,
+  }) {
+    final borderRadius = BorderRadius.circular(18);
+    final showTapOverlay = onPressed != null && !enabled && !loading;
+
+    return SizedBox(
+      height: responsive.orderActionButtonHeight,
+      width: double.infinity,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: FilledButton(
+              onPressed: loading ? null : (enabled ? onPressed : null),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.white,
+                disabledBackgroundColor: AppColors.primary.withValues(
+                  alpha: 0.55,
+                ),
+                disabledForegroundColor: AppColors.white,
+                shape: RoundedRectangleBorder(borderRadius: borderRadius),
+                textStyle: TextStyle(
+                  fontSize: responsive.orderBodyFontSize.clamp(15.0, 17.0),
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              child: loading
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            valueColor: const AlwaysStoppedAnimation(
+                              AppColors.white,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: responsive.spacingSm),
+                        const Text('Enviando...'),
+                      ],
+                    )
+                  : Text(label),
+            ),
+          ),
+          if (showTapOverlay)
+            Positioned.fill(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(borderRadius: borderRadius, onTap: onPressed),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -457,6 +566,61 @@ class _CurrentOrderPanelState extends State<CurrentOrderPanel> {
     if (confirmed == true) {
       await widget.onDeleteSelection(selection);
     }
+  }
+
+  Future<bool?> _showSendToPaymentConfirmation() {
+    final responsive = AppResponsive.of(context);
+
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.white,
+        surfaceTintColor: AppColors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(responsive.productListCardRadius),
+        ),
+        title: Text(
+          'Mandar a cobrar',
+          style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(
+            fontSize: responsive.orderTitleFontSize,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: Text(
+          'Mandar esta mesa a cobrar?',
+          style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
+            fontSize: responsive.orderBodyFontSize,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        actionsPadding: EdgeInsets.fromLTRB(
+          responsive.spacingXl,
+          0,
+          responsive.spacingXl,
+          responsive.spacingXl,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.white,
+              minimumSize: const Size(144, 44),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: const Text('Mandar a cobrar'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showEditCommentDialog(
@@ -769,6 +933,50 @@ class _SelectionCard extends StatelessWidget {
       default:
         return 'Extra';
     }
+  }
+}
+
+class _WaitingPaymentState extends StatelessWidget {
+  const _WaitingPaymentState({required this.responsive});
+
+  final AppResponsive responsive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: responsive.spacingMd,
+        vertical: responsive.spacingMd,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.tableWaitingPayment.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.tableWaitingPayment.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.receipt_long_rounded,
+            color: AppColors.tableWaitingPayment,
+            size: responsive.iconSize,
+          ),
+          SizedBox(width: responsive.spacingSm),
+          Expanded(
+            child: Text(
+              'Esperando cobro',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontSize: responsive.orderBodyFontSize,
+                fontWeight: FontWeight.w900,
+                color: AppColors.tableWaitingPayment,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

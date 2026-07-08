@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../../data/models/activity/recent_activity_item.dart';
+import '../../../data/models/kitchen/kitchen_ticket.dart';
 import '../../../data/models/orders/order.dart';
 import '../../../data/models/orders/order_selection.dart';
 import '../../../data/models/orders/order_selection_item.dart';
@@ -11,6 +14,7 @@ import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/order_repository.dart';
 import '../../../data/repositories/product_repository.dart';
 import '../../../data/repositories/table_repository.dart';
+import '../../../data/services/kitchen_realtime_service.dart';
 import '../../../data/services/order_service.dart';
 import '../models/product_selection.dart';
 
@@ -20,15 +24,18 @@ class OrderViewModel extends ChangeNotifier {
     required OrderRepository orderRepository,
     required TableRepository tableRepository,
     required AuthRepository authRepository,
+    required KitchenRealtimeService kitchenRealtimeService,
   }) : _productRepository = productRepository,
        _orderRepository = orderRepository,
        _tableRepository = tableRepository,
-       _authRepository = authRepository;
+       _authRepository = authRepository,
+       _kitchenRealtimeService = kitchenRealtimeService;
 
   final ProductRepository _productRepository;
   final OrderRepository _orderRepository;
   final TableRepository _tableRepository;
   final AuthRepository _authRepository;
+  final KitchenRealtimeService _kitchenRealtimeService;
 
   static const String allCategory = 'Todos';
   static const String mainCategory = 'Platillos';
@@ -59,12 +66,15 @@ class OrderViewModel extends ChangeNotifier {
   bool showingCategories = true;
   bool isLoading = false;
   bool isSending = false;
+  bool isRequestingPayment = false;
   bool isOrderExpanded = false;
   bool isRecentActivityLoading = false;
 
   String? errorMessage;
   String? actionErrorMessage;
   String? recentActivityErrorMessage;
+  StreamSubscription<KitchenTicket>? _ticketSubscription;
+  bool _realtimeStarted = false;
 
   void _debugLog(String message) {
     assert(() {
@@ -74,6 +84,54 @@ class OrderViewModel extends ChangeNotifier {
   }
 
   bool get isSendingToKitchen => isSending;
+  bool get isWaitingPayment => order?.isWaitingPayment ?? false;
+  bool get canModifyOrder => !isWaitingPayment;
+  bool get hasOrderSelectionsSentToKitchen =>
+      _sentSelectionsForBilling.isNotEmpty;
+  bool get hasPendingSelectionsToSend {
+    if (!canModifyOrder) {
+      return false;
+    }
+
+    return currentSelections.any(
+          (selection) => selection.isLocalDraft || selection.isDraft,
+        ) ||
+        (order?.items.any((item) => item.quantity > 0 && !item.sentToKitchen) ??
+            false);
+  }
+
+  bool get hasPendingKitchenSelections {
+    return _sentSelectionsForBilling.any((selection) => !selection.isReady);
+  }
+
+  String? get requestBillBlockedMessage {
+    final currentOrder = order;
+    if (currentOrder == null || currentOrder.id <= 0) {
+      return 'No hay una orden activa.';
+    }
+
+    if (currentOrder.isWaitingPayment) {
+      return 'La mesa ya esta esperando cobro.';
+    }
+
+    if (!currentOrder.isOpen) {
+      return 'No hay una orden activa.';
+    }
+
+    if (hasPendingSelectionsToSend) {
+      return 'Envia primero los platillos a cocina.';
+    }
+
+    if (!hasOrderSelectionsSentToKitchen) {
+      return 'Envia primero los platillos a cocina.';
+    }
+
+    if (hasPendingKitchenSelections) {
+      return 'Aun hay platillos pendientes en cocina.';
+    }
+
+    return null;
+  }
 
   List<String> get categories => const [
     allCategory,
@@ -96,9 +154,14 @@ class OrderViewModel extends ChangeNotifier {
       );
 
   bool get hasPendingItemsToSend {
+    if (!canModifyOrder) {
+      return false;
+    }
+
     final result =
         currentSelections.any(_isSendableSelection) ||
-        (order?.items.any((item) => item.quantity > 0) ?? false);
+        (order?.items.any((item) => item.quantity > 0 && !item.sentToKitchen) ??
+            false);
     _debugLog(
       'hasPendingItemsToSend=$result, '
       'currentSelections=${currentSelections.length}, '
@@ -108,6 +171,10 @@ class OrderViewModel extends ChangeNotifier {
       return true;
     }
     return false;
+  }
+
+  bool get canSendToPayment {
+    return requestBillBlockedMessage == null;
   }
 
   double get visibleTotal {
@@ -142,15 +209,20 @@ class OrderViewModel extends ChangeNotifier {
   }
 
   bool canEditSelection(OrderSelection selection) {
-    return _isVisibleSelection(selection) && selection.resolvedCanEdit;
+    return canModifyOrder &&
+        _isVisibleSelection(selection) &&
+        selection.resolvedCanEdit;
   }
 
   bool canDeleteSelection(OrderSelection selection) {
-    return _isVisibleSelection(selection) && selection.resolvedCanDelete;
+    return canModifyOrder &&
+        _isVisibleSelection(selection) &&
+        selection.resolvedCanDelete;
   }
 
   bool canEditSelectionComment(OrderSelection selection) {
-    return _isVisibleSelection(selection) &&
+    return canModifyOrder &&
+        _isVisibleSelection(selection) &&
         !selection.isCancelled &&
         selection.id != 0;
   }
@@ -273,6 +345,7 @@ class OrderViewModel extends ChangeNotifier {
 
       await _loadOrCreateOrder(table.id);
       _restoreDraftSelectionsForTable(table.id);
+      _syncDraftAvailabilityWithOrder();
       await _loadRecentActivity(
         showLoadingState: showLoading && recentActivities.isEmpty,
         notify: false,
@@ -307,6 +380,7 @@ class OrderViewModel extends ChangeNotifier {
 
     try {
       order = await _orderRepository.getOpenOrderByTable(currentTableId);
+      _syncDraftAvailabilityWithOrder();
       await _loadRecentActivity(showLoadingState: false, notify: false);
       if (showLoading) {
         errorMessage = null;
@@ -321,6 +395,31 @@ class OrderViewModel extends ChangeNotifier {
       }
       notifyListeners();
     }
+  }
+
+  Future<void> startRealtime() async {
+    if (_realtimeStarted) {
+      return;
+    }
+
+    _ticketSubscription = _kitchenRealtimeService.tickets.listen(
+      _handleIncomingKitchenTicket,
+    );
+    _realtimeStarted = true;
+
+    try {
+      await _kitchenRealtimeService.start();
+    } catch (_) {}
+  }
+
+  Future<void> stopRealtime() async {
+    await _ticketSubscription?.cancel();
+    _ticketSubscription = null;
+    _realtimeStarted = false;
+
+    try {
+      await _kitchenRealtimeService.stop();
+    } catch (_) {}
   }
 
   void selectCategory(String category) {
@@ -341,7 +440,7 @@ class OrderViewModel extends ChangeNotifier {
   }
 
   Future<void> addProduct(Product product, RestaurantTable table) async {
-    if (order == null) return;
+    if (order == null || !canModifyOrder) return;
 
     isLoading = true;
     errorMessage = null;
@@ -370,6 +469,10 @@ class OrderViewModel extends ChangeNotifier {
     required List<ProductSelection> complements,
     String comment = '',
   }) async {
+    if (!canModifyOrder) {
+      return;
+    }
+
     _currentTableId = table.id;
     errorMessage = null;
 
@@ -400,6 +503,10 @@ class OrderViewModel extends ChangeNotifier {
     required List<ProductSelection> complements,
     String comment = '',
   }) async {
+    if (!canModifyOrder) {
+      return;
+    }
+
     if (selection.isLocalDraft) {
       replaceSelectionLocally(
         selection: selection,
@@ -442,6 +549,10 @@ class OrderViewModel extends ChangeNotifier {
     required List<ProductSelection> complements,
     String comment = '',
   }) {
+    if (!canModifyOrder) {
+      return;
+    }
+
     final currentSelections = localDraftSelections;
     if (currentSelections.isEmpty) return;
 
@@ -469,6 +580,10 @@ class OrderViewModel extends ChangeNotifier {
   }
 
   Future<void> deleteSelection(OrderSelection selection) async {
+    if (!canModifyOrder) {
+      return;
+    }
+
     if (selection.isLocalDraft) {
       removeSelectionLocally(selection.id);
       return;
@@ -493,6 +608,10 @@ class OrderViewModel extends ChangeNotifier {
     required OrderSelection selection,
     required String comment,
   }) async {
+    if (!canModifyOrder) {
+      return false;
+    }
+
     if (selection.isLocalDraft) {
       _updateLocalSelectionComment(selection.id, comment);
       return true;
@@ -528,6 +647,10 @@ class OrderViewModel extends ChangeNotifier {
   }
 
   void _updateLocalSelectionComment(int selectionId, String comment) {
+    if (!canModifyOrder) {
+      return;
+    }
+
     _draftSelections = localDraftSelections.map((selection) {
       if (selection.id != selectionId) {
         return selection;
@@ -541,6 +664,10 @@ class OrderViewModel extends ChangeNotifier {
   }
 
   void removeSelectionLocally(int selectionId) {
+    if (!canModifyOrder) {
+      return;
+    }
+
     final remainingSelections = localDraftSelections
         .where((selection) => selection.id != selectionId)
         .toList();
@@ -558,6 +685,10 @@ class OrderViewModel extends ChangeNotifier {
   }
 
   Future<bool> sendToKitchen() async {
+    if (!canModifyOrder) {
+      return false;
+    }
+
     final currentOrder = order;
     final sendableSelections = currentSelections
         .where(_isSendableSelection)
@@ -632,6 +763,41 @@ class OrderViewModel extends ChangeNotifier {
     } finally {
       isSending = false;
       _debugLog('sendToKitchen finalizado. isSending=false.');
+      notifyListeners();
+    }
+  }
+
+  Future<bool> requestBill() async {
+    if (isRequestingPayment) {
+      return false;
+    }
+
+    final blockedMessage = requestBillBlockedMessage;
+    if (blockedMessage != null) {
+      actionErrorMessage = blockedMessage;
+      notifyListeners();
+      return false;
+    }
+
+    final currentOrder = order;
+    if (currentOrder == null) {
+      return false;
+    }
+
+    isRequestingPayment = true;
+    actionErrorMessage = null;
+    notifyListeners();
+
+    try {
+      await _orderRepository.requestBill(currentOrder.id);
+      _clearCurrentDrafts();
+      await refreshCurrentTableOrder();
+      return true;
+    } catch (error) {
+      await _handleActionError(error, refreshAfterConflict: true);
+      return false;
+    } finally {
+      isRequestingPayment = false;
       notifyListeners();
     }
   }
@@ -959,11 +1125,29 @@ class OrderViewModel extends ChangeNotifier {
         .toList();
   }
 
+  List<OrderSelection> get _sentSelectionsForBilling {
+    return currentSelections.where((selection) {
+      return _isVisibleSelection(selection) &&
+          !selection.isLocalDraft &&
+          !selection.isDraft &&
+          !selection.isCancelled &&
+          selection.items.any((item) => item.quantity > 0);
+    }).toList();
+  }
+
   void _restoreDraftSelectionsForTable(int tableId) {
     final savedDraftSelections = _draftSelectionsByTable[tableId];
     _draftSelections = List<OrderSelection>.from(
       savedDraftSelections ?? const [],
     );
+  }
+
+  void _syncDraftAvailabilityWithOrder() {
+    if (order?.isOpen ?? true) {
+      return;
+    }
+
+    _clearCurrentDrafts();
   }
 
   void _saveCurrentDraft() {
@@ -1004,12 +1188,26 @@ class OrderViewModel extends ChangeNotifier {
       if (refreshAfterConflict && _currentTableId != null) {
         try {
           order = await _orderRepository.getOpenOrderByTable(_currentTableId!);
+          _syncDraftAvailabilityWithOrder();
         } catch (_) {}
       }
       return;
     }
 
     actionErrorMessage = message;
+  }
+
+  void _handleIncomingKitchenTicket(KitchenTicket ticket) {
+    final currentOrderId = order?.id;
+    if (currentOrderId == null || currentOrderId <= 0) {
+      return;
+    }
+
+    if (ticket.orderId != currentOrderId) {
+      return;
+    }
+
+    unawaited(refreshCurrentTableOrder());
   }
 
   int _buildLocalSelectionId(int sequenceNumber) => -sequenceNumber;
@@ -1030,5 +1228,11 @@ class OrderViewModel extends ChangeNotifier {
             ?.where((selection) => selection.hasVisibleItems)
             .length ??
         0;
+  }
+
+  @override
+  void dispose() {
+    unawaited(stopRealtime());
+    super.dispose();
   }
 }

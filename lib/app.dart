@@ -53,6 +53,7 @@ class SofiaApp extends StatelessWidget {
             orderRepository: context.read<OrderRepository>(),
             tableRepository: context.read<TableRepository>(),
             authRepository: context.read<AuthRepository>(),
+            kitchenRealtimeService: context.read<KitchenRealtimeService>(),
           ),
         ),
         ChangeNotifierProvider(

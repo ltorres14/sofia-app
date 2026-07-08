@@ -98,11 +98,15 @@ class KitchenTicketCard extends StatelessWidget {
               ..._buildLegacyItems(context, responsive),
             if (ticket.selections.isEmpty) ...[
               SizedBox(height: responsive.spacingMd),
+              const Divider(height: 1, color: AppColors.border),
+              SizedBox(height: responsive.spacingMd),
               _ActionButton(
                 label: ticket.status == 1
                     ? 'Marcar preparando'
                     : 'Marcar listo',
-                icon: Icons.local_fire_department_rounded,
+                icon: ticket.status == 1
+                    ? Icons.local_fire_department_rounded
+                    : Icons.check_circle_rounded,
                 onPressed: ticket.status >= 3 || isLegacyActionLoading
                     ? null
                     : onAdvanceStatus,
@@ -120,10 +124,18 @@ class KitchenTicketCard extends StatelessWidget {
     AppResponsive responsive,
   ) {
     final theme = Theme.of(context);
+    final widgets = <Widget>[];
 
-    return [
-      for (final selection in ticket.selections) ...[
-        _SelectionCard(
+    for (var index = 0; index < ticket.selections.length; index++) {
+      final selection = ticket.selections[index];
+      if (index > 0) {
+        widgets.add(SizedBox(height: responsive.spacingMd));
+        widgets.add(const Divider(height: 1, color: AppColors.border));
+        widgets.add(SizedBox(height: responsive.spacingMd));
+      }
+
+      widgets.add(
+        _SelectionSection(
           selection: selection,
           responsive: responsive,
           theme: theme,
@@ -135,11 +147,21 @@ class KitchenTicketCard extends StatelessWidget {
           latestUnreadMessage: latestUnreadMessageForSelection(selection),
           onViewSelectionMessages: onViewSelectionMessages,
         ),
-        SizedBox(height: responsive.spacingSm),
-      ],
-      if (ticket.legacyItems.isNotEmpty)
-        ..._buildSelectionItemList(context, ticket.legacyItems, responsive),
-    ];
+      );
+    }
+
+    if (ticket.legacyItems.isNotEmpty) {
+      if (widgets.isNotEmpty) {
+        widgets.add(SizedBox(height: responsive.spacingMd));
+        widgets.add(const Divider(height: 1, color: AppColors.border));
+        widgets.add(SizedBox(height: responsive.spacingMd));
+      }
+      widgets.addAll(
+        _buildSelectionItemList(context, ticket.legacyItems, responsive),
+      );
+    }
+
+    return widgets;
   }
 
   List<Widget> _buildLegacyItems(
@@ -155,9 +177,9 @@ class KitchenTicketCard extends StatelessWidget {
     AppResponsive responsive,
   ) {
     return [
-      for (final item in items) ...[
-        _buildItemTile(context, item),
-        SizedBox(height: responsive.spacingSm),
+      for (var index = 0; index < items.length; index++) ...[
+        _buildItemTile(context, items[index]),
+        if (index < items.length - 1) SizedBox(height: responsive.spacingSm),
       ],
     ];
   }
@@ -167,28 +189,22 @@ class KitchenTicketCard extends StatelessWidget {
     final theme = Theme.of(context);
     final notes = item.notes?.trim() ?? '';
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(responsive.spacingSm),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '${item.quantity} x ${item.productName}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontSize: responsive.orderBodyFontSize,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${item.quantity} × ${item.productName}',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontSize: responsive.orderBodyFontSize,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
           ),
-          if (notes.isNotEmpty) ...[
-            SizedBox(height: responsive.spacingXs),
-            Text(
+        ),
+        if (notes.isNotEmpty) ...[
+          SizedBox(height: responsive.spacingXs / 2),
+          Padding(
+            padding: EdgeInsets.only(left: responsive.spacingSm),
+            child: Text(
               notes,
               style: theme.textTheme.bodySmall?.copyWith(
                 fontSize: responsive.captionFontSize,
@@ -196,15 +212,15 @@ class KitchenTicketCard extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 }
 
-class _SelectionCard extends StatelessWidget {
-  const _SelectionCard({
+class _SelectionSection extends StatelessWidget {
+  const _SelectionSection({
     required this.selection,
     required this.responsive,
     required this.theme,
@@ -230,132 +246,198 @@ class _SelectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectionStatus = _statusPresentation(selection.status);
+    final hasUnreadMessage = latestUnreadMessage != null;
+    final hasUnreadCommentUpdate =
+        latestUnreadMessage?.isCommentUpdated ?? false;
+    final unreadPreviewText = hasUnreadMessage
+        ? _messagePreviewText(latestUnreadMessage!)
+        : null;
+    final commentText = hasUnreadMessage
+        ? null
+        : (selection.hasComment ? selection.displayComment : null);
 
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(responsive.spacingSm),
-      decoration: BoxDecoration(
-        color: AppColors.softBackground,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: unreadCount > 0
-              ? AppColors.danger.withValues(alpha: 0.28)
-              : AppColors.border,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      selection.label.isNotEmpty
-                          ? selection.label
-                          : 'Selección ${selection.sequenceNumber}',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontSize: responsive.orderBodyFontSize,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    if (unreadCount > 0) ...[
-                      SizedBox(height: responsive.spacingXs),
-                      _UnreadBadge(count: unreadCount),
-                    ],
-                  ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                selection.label.isNotEmpty
+                    ? selection.label
+                    : 'Selección ${selection.sequenceNumber}',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: responsive.orderBodyFontSize,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
                 ),
               ),
-              SizedBox(width: responsive.spacingSm),
-              Flexible(
-                child: _StatusChip(
-                  label: selectionStatus.label,
-                  color: selectionStatus.color,
-                  responsive: responsive,
-                ),
-              ),
-            ],
-          ),
-          if (selection.hasComment) ...[
-            SizedBox(height: responsive.spacingXs),
-            Text(
-              selection.displayComment,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontSize: responsive.captionFontSize,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
+            ),
+            SizedBox(width: responsive.spacingSm),
+            Flexible(
+              child: _StatusChip(
+                label: selectionStatus.label,
+                color: selectionStatus.color,
+                responsive: responsive,
               ),
             ),
           ],
-          if (latestUnreadMessage != null) ...[
-            SizedBox(height: responsive.spacingSm),
-            _UnreadMessagePreview(
-              message: latestUnreadMessage!,
+        ),
+        if (unreadCount > 0) ...[
+          SizedBox(height: responsive.spacingSm),
+          _UnreadBadge(
+            count: unreadCount,
+            hasCommentUpdate: hasUnreadCommentUpdate,
+          ),
+        ],
+        if (hasUnreadMessage || commentText != null) ...[
+          SizedBox(height: responsive.spacingSm),
+          const Divider(height: 1, color: AppColors.border),
+          SizedBox(height: responsive.spacingSm),
+          if (hasUnreadMessage)
+            if (hasUnreadCommentUpdate)
+              _CommentBlock(
+                text: unreadPreviewText!,
+                responsive: responsive,
+                theme: theme,
+              )
+            else
+              _UnreadMessagePreview(
+                message: latestUnreadMessage!,
+                responsive: responsive,
+                theme: theme,
+              )
+          else
+            _CommentBlock(
+              text: commentText!,
               responsive: responsive,
               theme: theme,
             ),
-          ],
+        ],
+        if (selection.items.isNotEmpty) ...[
+          SizedBox(height: responsive.spacingSm),
+          const Divider(height: 1, color: AppColors.border),
           SizedBox(height: responsive.spacingSm),
           ...itemListBuilder(selection.items),
-          SizedBox(height: responsive.spacingXs),
-          TextButton.icon(
-            onPressed: () => onViewSelectionMessages(selection),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(0, 0),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            icon: const Icon(Icons.forum_rounded, size: 18),
-            label: const Text('Ver historial'),
-          ),
-          if (selection.status < 3) ...[
-            SizedBox(height: responsive.spacingSm),
-            _ActionButton(
-              label: selection.status == 1
-                  ? 'Marcar preparando'
-                  : 'Marcar listo',
-              icon: selection.status == 1
-                  ? Icons.local_fire_department_rounded
-                  : Icons.check_circle_rounded,
-              onPressed: selectionLoading
-                  ? null
-                  : () {
-                      onAdvanceSelectionStatus(selection);
-                    },
-              loading: selectionLoading,
-            ),
-          ],
         ],
-      ),
+        SizedBox(height: responsive.spacingSm),
+        const Divider(height: 1, color: AppColors.border),
+        SizedBox(height: responsive.spacingSm),
+        TextButton.icon(
+          onPressed: () => onViewSelectionMessages(selection),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            padding: EdgeInsets.zero,
+            minimumSize: const Size(0, 0),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+          label: const Text('Ver mensajes'),
+        ),
+        if (selection.status < 3) ...[
+          SizedBox(height: responsive.spacingSm),
+          _ActionButton(
+            label: selection.status == 1 ? 'Marcar preparando' : 'Marcar listo',
+            icon: selection.status == 1
+                ? Icons.local_fire_department_rounded
+                : Icons.check_circle_rounded,
+            onPressed: selectionLoading
+                ? null
+                : () {
+                    onAdvanceSelectionStatus(selection);
+                  },
+            loading: selectionLoading,
+          ),
+        ],
+      ],
     );
+  }
+
+  String _messagePreviewText(OrderSelectionMessage message) {
+    if (message.newMessageText != null) {
+      return message.newMessageText!;
+    }
+
+    if (message.messageText.isNotEmpty) {
+      return message.messageText;
+    }
+
+    return message.previewTitle;
   }
 }
 
 class _UnreadBadge extends StatelessWidget {
-  const _UnreadBadge({required this.count});
+  const _UnreadBadge({required this.count, required this.hasCommentUpdate});
 
   final int count;
+  final bool hasCommentUpdate;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.danger,
+        color: AppColors.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(
-        '$count pendiente${count == 1 ? '' : 's'}',
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: AppColors.white,
-          fontWeight: FontWeight.w900,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.mark_chat_unread_rounded,
+            size: 14,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            hasCommentUpdate
+                ? 'Nuevo comentario'
+                : '$count mensaje${count == 1 ? '' : 's'} nuevo${count == 1 ? '' : 's'}',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppColors.primary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _CommentBlock extends StatelessWidget {
+  const _CommentBlock({
+    required this.text,
+    required this.responsive,
+    required this.theme,
+  });
+
+  final String text;
+  final AppResponsive responsive;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          Icons.chat_bubble_outline_rounded,
+          size: 18,
+          color: AppColors.primary,
+        ),
+        SizedBox(width: responsive.spacingXs),
+        Expanded(
+          child: Text(
+            text,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontSize: responsive.captionFontSize,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -371,70 +453,93 @@ class _UnreadMessagePreview extends StatelessWidget {
   final AppResponsive responsive;
   final ThemeData theme;
 
+  String get _headline =>
+      message.isCommentUpdated ? 'Nuevo comentario' : 'Nuevo mensaje';
+
+  String get _messageBody {
+    if (message.newMessageText != null) {
+      return message.newMessageText!;
+    }
+
+    if (message.messageText.isNotEmpty) {
+      return message.messageText;
+    }
+
+    return message.previewTitle;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(responsive.spacingSm),
-      decoration: BoxDecoration(
-        color: AppColors.danger.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.danger.withValues(alpha: 0.16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.warning_amber_rounded,
-                color: AppColors.danger,
-                size: 18,
-              ),
-              SizedBox(width: responsive.spacingXs),
-              Expanded(
-                child: Text(
-                  message.previewTitle,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w900,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.chat_bubble_outline_rounded,
+              color: AppColors.primary,
+              size: 18,
+            ),
+            SizedBox(width: responsive.spacingXs),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _headline,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
+                  SizedBox(height: responsive.spacingXs / 2),
+                  Text(
+                    _relativeTime(message.createdAt),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: responsive.captionFontSize,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
+          ],
+        ),
+        SizedBox(height: responsive.spacingSm),
+        Text(
+          _messageBody,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w800,
           ),
-          if (message.previousMessageText != null) ...[
-            SizedBox(height: responsive.spacingXs),
-            Text(
-              'Antes: ${message.previousMessageText}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-          if (message.newMessageText != null) ...[
-            SizedBox(height: 2),
-            Text(
-              'Ahora: ${message.newMessageText}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ] else if (!message.isCommentUpdated) ...[
-            SizedBox(height: responsive.spacingXs),
-            Text(
-              message.messageText,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ],
-      ),
+        ),
+      ],
     );
+  }
+
+  String _relativeTime(DateTime value) {
+    final now = DateTime.now();
+    final difference = now.difference(value.toLocal());
+
+    if (difference.inSeconds < 10) {
+      return 'Ahora';
+    }
+    if (difference.inMinutes < 1) {
+      return 'Hace unos segundos';
+    }
+    if (difference.inMinutes == 1) {
+      return 'Hace 1 min';
+    }
+    if (difference.inHours < 1) {
+      return 'Hace ${difference.inMinutes} min';
+    }
+    if (difference.inHours == 1) {
+      return 'Hace 1 h';
+    }
+
+    return 'Hace ${difference.inHours} h';
   }
 }
 

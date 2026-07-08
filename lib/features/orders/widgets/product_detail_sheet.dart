@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/products/product.dart';
 import '../../../shared/widgets/safe_app_image.dart';
+import '../../../shared/widgets/sofia_bottom_sheet_header.dart';
 import '../models/product_selection.dart';
 
 class ProductDetailSheet extends StatefulWidget {
@@ -102,15 +103,11 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
                   top: responsive.spacingSm,
                   bottom: responsive.spacingMd,
                 ),
-                child: Center(
-                  child: Container(
-                    width: responsive.isPortrait ? 44 : 56,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
+                child: SofiaBottomSheetHeader(
+                  title: widget.editMode
+                      ? 'Editar seleccion'
+                      : 'Agregar producto',
+                  showHandle: true,
                 ),
               ),
               Expanded(

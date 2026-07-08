@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../core/responsive/app_responsive.dart';
 import '../../core/theme/app_colors.dart';
+import 'sofia_bottom_sheet_header.dart';
 
 class MoreBottomSheet extends StatelessWidget {
   const MoreBottomSheet({
@@ -30,6 +32,7 @@ class MoreBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final responsive = AppResponsive.of(context);
     final trimmedName = userName.trim();
     final initial = trimmedName.isNotEmpty
         ? trimmedName.characters.first.toUpperCase()
@@ -43,22 +46,21 @@ class MoreBottomSheet extends StatelessWidget {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          padding: EdgeInsets.fromLTRB(
+            responsive.spacingLg,
+            responsive.spacingMd,
+            responsive.spacingLg,
+            responsive.spacingLg,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
+              const SofiaBottomSheetHeader(
+                title: 'Mas opciones',
+                showHandle: true,
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: responsive.spacingMd),
               Row(
                 children: [
                   Container(

@@ -5,12 +5,12 @@ import 'dart:async';
 import '../../../core/responsive/app_responsive.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
-import '../../../data/models/activity/recent_activity_item.dart';
 import '../../../data/models/products/product.dart';
 import '../../../data/models/tables/restaurant_table.dart';
 import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/loading_overlay.dart';
-import '../../../shared/widgets/recent_activity_card.dart';
+import '../../../shared/widgets/recent_activity_bottom_sheet.dart';
+import '../../../shared/widgets/sofia_bottom_sheet_header.dart';
 import '../viewmodels/order_view_model.dart';
 import '../widgets/current_order_panel.dart';
 import '../widgets/product_card.dart';
@@ -67,53 +67,107 @@ class _OrderViewState extends State<OrderView> {
 
               return FractionallySizedBox(
                 heightFactor: sheetResponsive.isPortrait ? 0.88 : 0.94,
-                child: CurrentOrderPanel(
-                  order: liveViewModel.order,
-                  visibleSelections: selections,
-                  visibleTotal: liveViewModel.visibleTotal,
-                  visibleItemCount: liveViewModel.visibleItemCount,
-                  tableName: widget.table.name,
-                  sending: liveViewModel.isSendingToKitchen,
-                  canSendToKitchen: liveViewModel.hasPendingItemsToSend,
-                  canEditSelection: liveViewModel.canEditSelection,
-                  canEditSelectionComment:
-                      liveViewModel.canEditSelectionComment,
-                  canDeleteSelection: liveViewModel.canDeleteSelection,
-                  statusLabelForSelection:
-                      liveViewModel.statusLabelForSelection,
-                  onSendToKitchen: () async {
-                    _debugLog(
-                      'onSendToKitchen invoked: '
-                      'canSend=${liveViewModel.hasPendingItemsToSend}, '
-                      'isSending=${liveViewModel.isSendingToKitchen}, '
-                      'currentSelections=${liveViewModel.currentSelections.length}',
-                    );
-
-                    if (liveViewModel.isSendingToKitchen) {
-                      _debugLog('onSendToKitchen ignorado por envio en curso.');
-                      return false;
-                    }
-
-                    final success = await liveViewModel.sendToKitchen();
-                    _debugLog('sendToKitchen finalizo con success=$success.');
-                    if (!success) return false;
-                    if (!sheetContext.mounted) return true;
-                    Navigator.of(sheetContext).pop();
-                    return true;
-                  },
-                  onEditSelection: (selection) => _showEditSelectionDetail(
-                    panelContext,
-                    liveViewModel,
-                    selection.id,
-                  ),
-                  onSaveSelectionComment: (selection, comment) =>
-                      liveViewModel.updateSelectionComment(
-                        selection: selection,
-                        comment: comment,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        sheetResponsive.spacingMd,
+                        sheetResponsive.spacingSm,
+                        sheetResponsive.spacingMd,
+                        0,
                       ),
-                  onDeleteSelection: (selection) =>
-                      liveViewModel.deleteSelection(selection),
-                  resolveProductById: liveViewModel.productById,
+                      child: const SofiaBottomSheetHeader(
+                        title: 'Detalle de orden',
+                        showHandle: false,
+                      ),
+                    ),
+                    Expanded(
+                      child: CurrentOrderPanel(
+                        order: liveViewModel.order,
+                        visibleSelections: selections,
+                        visibleTotal: liveViewModel.visibleTotal,
+                        visibleItemCount: liveViewModel.visibleItemCount,
+                        tableName: widget.table.name,
+                        sending: liveViewModel.isSendingToKitchen,
+                        requestingPayment: liveViewModel.isRequestingPayment,
+                        isWaitingPayment: liveViewModel.isWaitingPayment,
+                        canSendToKitchen: liveViewModel.hasPendingItemsToSend,
+                        canSendToPayment: liveViewModel.canSendToPayment,
+                        canEditSelection: liveViewModel.canEditSelection,
+                        canEditSelectionComment:
+                            liveViewModel.canEditSelectionComment,
+                        canDeleteSelection: liveViewModel.canDeleteSelection,
+                        statusLabelForSelection:
+                            liveViewModel.statusLabelForSelection,
+                        onSendToKitchen: () async {
+                          _debugLog(
+                            'onSendToKitchen invoked: '
+                            'canSend=${liveViewModel.hasPendingItemsToSend}, '
+                            'isSending=${liveViewModel.isSendingToKitchen}, '
+                            'currentSelections=${liveViewModel.currentSelections.length}',
+                          );
+
+                          if (liveViewModel.isSendingToKitchen) {
+                            _debugLog(
+                              'onSendToKitchen ignorado por envio en curso.',
+                            );
+                            return false;
+                          }
+
+                          final success = await liveViewModel.sendToKitchen();
+                          _debugLog(
+                            'sendToKitchen finalizo con success=$success.',
+                          );
+                          if (!success) return false;
+                          if (!sheetContext.mounted) return true;
+                          Navigator.of(sheetContext).pop();
+                          return true;
+                        },
+                        onSendToPayment: () async {
+                          if (liveViewModel.isRequestingPayment) {
+                            return false;
+                          }
+
+                          final success = await liveViewModel.requestBill();
+                          if (!success) {
+                            return false;
+                          }
+
+                          if (!sheetContext.mounted) {
+                            return true;
+                          }
+
+                          Navigator.of(sheetContext).pop();
+                          if (!mounted) {
+                            return true;
+                          }
+
+                          ScaffoldMessenger.of(context)
+                            ..hideCurrentSnackBar()
+                            ..showSnackBar(
+                              const SnackBar(
+                                content: Text('Mesa enviada a cobro.'),
+                              ),
+                            );
+                          return true;
+                        },
+                        onEditSelection: (selection) =>
+                            _showEditSelectionDetail(
+                              panelContext,
+                              liveViewModel,
+                              selection.id,
+                            ),
+                        onSaveSelectionComment: (selection, comment) =>
+                            liveViewModel.updateSelectionComment(
+                              selection: selection,
+                              comment: comment,
+                            ),
+                        onDeleteSelection: (selection) =>
+                            liveViewModel.deleteSelection(selection),
+                        resolveProductById: liveViewModel.productById,
+                      ),
+                    ),
+                  ],
                 ),
               );
             },
@@ -128,6 +182,10 @@ class _OrderViewState extends State<OrderView> {
     OrderViewModel viewModel,
     Product product,
   ) async {
+    if (!viewModel.canModifyOrder) {
+      return;
+    }
+
     final isPrimaryProduct = viewModel.isPrimaryProduct(product);
     final beverages = isPrimaryProduct
         ? viewModel.beverageProducts
@@ -185,6 +243,10 @@ class _OrderViewState extends State<OrderView> {
     OrderViewModel viewModel,
     int selectionId,
   ) async {
+    if (!viewModel.canModifyOrder) {
+      return;
+    }
+
     final selection = viewModel.selectionById(selectionId);
     if (selection == null) return;
 
@@ -266,7 +328,7 @@ class _OrderViewState extends State<OrderView> {
 
   void _startPolling() {
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) async {
       if (!mounted || _isSelectionSheetOpen) {
         return;
       }
@@ -276,7 +338,12 @@ class _OrderViewState extends State<OrderView> {
         return;
       }
 
-      await context.read<OrderViewModel>().refreshCurrentTableOrder();
+      final viewModel = context.read<OrderViewModel>();
+      if (viewModel.isSendingToKitchen) {
+        return;
+      }
+
+      await viewModel.refreshCurrentTableOrder();
     });
   }
 
@@ -315,12 +382,32 @@ class _OrderViewState extends State<OrderView> {
     );
   }
 
+  Future<void> _openRecentHistory(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      enableDrag: true,
+      isDismissible: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Consumer<OrderViewModel>(
+        builder: (context, viewModel, child) => RecentActivityBottomSheet(
+          items: viewModel.recentActivities,
+          isLoading: viewModel.isRecentActivityLoading,
+          errorMessage: viewModel.recentActivityErrorMessage,
+          emptyMessage: 'Sin movimientos recientes de ordenes.',
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<OrderViewModel>().load(widget.table);
+      final viewModel = context.read<OrderViewModel>();
+      viewModel.startRealtime();
+      viewModel.load(widget.table);
     });
     _startPolling();
   }
@@ -328,6 +415,7 @@ class _OrderViewState extends State<OrderView> {
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    unawaited(context.read<OrderViewModel>().stopRealtime());
     super.dispose();
   }
 
@@ -403,6 +491,16 @@ class _OrderViewState extends State<OrderView> {
             total: viewModel.visibleTotal,
             onTap: () => _showOrderDetails(context, viewModel),
           ),
+          SizedBox(height: responsive.spacingSm),
+          Align(
+            alignment: Alignment.centerRight,
+            child: RecentActivityHistoryButton(
+              isLoading:
+                  viewModel.isRecentActivityLoading &&
+                  viewModel.recentActivities.isEmpty,
+              onTap: () => _openRecentHistory(context),
+            ),
+          ),
           SizedBox(height: responsive.spacingMd),
           SizedBox(
             height: responsive.categoryButtonHeight + 4,
@@ -415,12 +513,6 @@ class _OrderViewState extends State<OrderView> {
           ),
           SizedBox(height: responsive.spacingLg),
           ..._buildMobileSections(context, viewModel, responsive),
-          SizedBox(height: responsive.spacingXl),
-          _RecentOrderActivitySection(
-            items: viewModel.recentActivities,
-            isLoading: viewModel.isRecentActivityLoading,
-            errorMessage: viewModel.recentActivityErrorMessage,
-          ),
         ],
       ),
     );
@@ -436,20 +528,24 @@ class _OrderViewState extends State<OrderView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _OrderSummaryButton(
-            itemCount: viewModel.visibleItemCount,
-            total: viewModel.visibleTotal,
-            onTap: () => _showOrderDetails(context, viewModel),
-            compact: true,
-          ),
-          SizedBox(height: responsive.spacingMd),
-          SizedBox(
-            height: responsive.landscapeRecentActivitySectionHeight,
-            child: _RecentOrderActivitySection(
-              items: viewModel.recentActivities,
-              isLoading: viewModel.isRecentActivityLoading,
-              errorMessage: viewModel.recentActivityErrorMessage,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _OrderSummaryButton(
+                  itemCount: viewModel.visibleItemCount,
+                  total: viewModel.visibleTotal,
+                  onTap: () => _showOrderDetails(context, viewModel),
+                  compact: true,
+                ),
+              ),
+              SizedBox(width: responsive.spacingSm),
+              RecentActivityHistoryButton(
+                isLoading:
+                    viewModel.isRecentActivityLoading &&
+                    viewModel.recentActivities.isEmpty,
+                onTap: () => _openRecentHistory(context),
+              ),
+            ],
           ),
           SizedBox(height: responsive.spacingMd),
           SizedBox(
@@ -479,6 +575,9 @@ class _OrderViewState extends State<OrderView> {
                 product: product,
                 responsive: responsive,
                 onTap: () {
+                  if (!viewModel.canModifyOrder) {
+                    return;
+                  }
                   _showProductDetail(context, viewModel, product);
                 },
               );
@@ -649,30 +748,11 @@ class _CategoryProductsSheet extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
+            SofiaBottomSheetHeader(title: title, showHandle: true),
+            SizedBox(height: responsive.spacingMd),
             Row(
               children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.4,
-                    ),
-                  ),
-                ),
+                const Spacer(),
                 Text(
                   products.length == 1
                       ? '1 producto'
@@ -706,202 +786,6 @@ class _CategoryProductsSheet extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _RecentOrderActivitySection extends StatelessWidget {
-  const _RecentOrderActivitySection({
-    required this.items,
-    required this.isLoading,
-    required this.errorMessage,
-  });
-
-  final List<RecentActivityItem> items;
-  final bool isLoading;
-  final String? errorMessage;
-
-  @override
-  Widget build(BuildContext context) {
-    final responsive = AppResponsive.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Historial reciente',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        SizedBox(height: responsive.spacingXs),
-        Text(
-          'Movimientos de esta mesa y de otras ordenes recientes.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        SizedBox(height: responsive.spacingSm),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(responsive.spacingMd),
-          decoration: BoxDecoration(
-            color: AppColors.softBackground,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      Icons.history_rounded,
-                      color: AppColors.primary,
-                      size: 20,
-                    ),
-                  ),
-                  SizedBox(width: responsive.spacingSm),
-                  Expanded(
-                    child: Text(
-                      items.isEmpty
-                          ? 'Sin actividad reciente'
-                          : 'Ultimos movimientos',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (errorMessage != null && items.isNotEmpty) ...[
-                SizedBox(height: responsive.spacingSm),
-                _RecentOrderActivityHint(message: errorMessage!),
-              ],
-              SizedBox(height: responsive.spacingSm),
-              if (responsive.isPortrait)
-                SizedBox(
-                  height: responsive.recentActivityBodyHeight,
-                  child: _buildBody(context),
-                )
-              else
-                Expanded(child: _buildBody(context)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBody(BuildContext context) {
-    final responsive = AppResponsive.of(context);
-
-    if (isLoading && items.isEmpty) {
-      return const _RecentOrderActivityState(
-        icon: Icons.sync_rounded,
-        message: 'Cargando movimientos recientes...',
-      );
-    }
-
-    if (items.isEmpty && errorMessage != null) {
-      return _RecentOrderActivityState(
-        icon: Icons.wifi_off_rounded,
-        message: errorMessage!,
-      );
-    }
-
-    if (items.isNotEmpty) {
-      return ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.only(right: responsive.spacingXs),
-        itemCount: items.length,
-        separatorBuilder: (_, _) => SizedBox(width: responsive.spacingMd),
-        itemBuilder: (context, index) {
-          return RecentActivityCard(item: items[index], compact: true);
-        },
-      );
-    }
-
-    return const _RecentOrderActivityState(
-      icon: Icons.history_rounded,
-      message: 'Sin movimientos recientes de ordenes.',
-    );
-  }
-}
-
-class _RecentOrderActivityHint extends StatelessWidget {
-  const _RecentOrderActivityHint({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.16)),
-      ),
-      child: Text(
-        message,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-class _RecentOrderActivityState extends StatelessWidget {
-  const _RecentOrderActivityState({required this.icon, required this.message});
-
-  final IconData icon;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.textSecondary, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

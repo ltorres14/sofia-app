@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/cash_cut/today_sales.dart';
 import '../../../shared/widgets/safe_app_image.dart';
+import '../../../shared/widgets/sofia_bottom_sheet_header.dart';
 
 class SaleDetailSheet extends StatelessWidget {
   const SaleDetailSheet({super.key, required this.sale});
@@ -30,15 +31,9 @@ class SaleDetailSheet extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 44,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
+            const SofiaBottomSheetHeader(
+              title: 'Detalle de venta',
+              showHandle: true,
             ),
             SizedBox(height: responsive.spacingMd),
             _SaleDetailHeaderCard(sale: sale, responsive: responsive),

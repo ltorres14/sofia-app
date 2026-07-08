@@ -2,6 +2,11 @@ import 'order_item.dart';
 import 'order_selection.dart';
 
 class Order {
+  static const int openStatus = 1;
+  static const int billRequestedStatus = 2;
+  static const int paidStatus = 3;
+  static const int cancelledStatus = 4;
+
   Order({
     required this.id,
     required this.tableId,
@@ -22,6 +27,10 @@ class Order {
   final List<OrderItem> items;
   final List<OrderSelection> selections;
 
+  bool get isOpen => status == openStatus;
+  bool get isWaitingPayment => status == billRequestedStatus;
+  bool get isPaid => status == paidStatus;
+  bool get isCancelled => status == cancelledStatus;
   bool get isEmpty => total <= 0 || (items.isEmpty && selections.isEmpty);
 
   bool get isPayable => !isEmpty;
